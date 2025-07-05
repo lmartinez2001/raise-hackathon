@@ -85,7 +85,8 @@ class WhisperTranscriptionTool:
         language: Optional[str] = None,
         output_format: Literal['text', 'srt', 'vtt', 'json'] = "text",
         output_file: Optional[str] = None,
-        include_timestamps: bool = True
+        include_timestamps: bool = True,
+        video_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Transcribe video file using Whisper."""
         try:
@@ -106,27 +107,39 @@ class WhisperTranscriptionTool:
             
             # Process segments with timestamps if requested
             segments = transcription_result.get("segments", [])
-            if include_timestamps and segments:
+            if segments:
                 processed_segments = []
+                
+                # Generate video ID if not provided
+                if video_id is None:
+                    video_id = self._generate_video_id(video_path)
+                
                 for segment in segments:
                     start_time = segment.get("start", 0)
                     end_time = segment.get("end", 0)
                     text = segment.get("text", "").strip()
                     
-                    # Format timestamps as MM:SS
-                    start_formatted = self._format_timestamp(start_time)
-                    end_formatted = self._format_timestamp(end_time)
-                    
-                    processed_segments.append({
+                    segment_data = {
                         "start": start_time,
                         "end": end_time,
-                        "start_formatted": start_formatted,
-                        "end_formatted": end_formatted,
                         "text": text,
-                        "timestamp_range": f"[{start_formatted} - {end_formatted}]"
-                    })
+                        "video_id": video_id
+                    }
+                    
+                    # Add formatted timestamps if requested
+                    if include_timestamps:
+                        start_formatted = self._format_timestamp(start_time)
+                        end_formatted = self._format_timestamp(end_time)
+                        segment_data.update({
+                            "start_formatted": start_formatted,
+                            "end_formatted": end_formatted,
+                            "timestamp_range": f"[{start_formatted} - {end_formatted}]"
+                        })
+                    
+                    processed_segments.append(segment_data)
                 
                 transcription_result["segments"] = processed_segments
+                transcription_result["video_id"] = video_id
             
             # Save to file if output_file is specified
             if output_file:
@@ -258,6 +271,25 @@ class WhisperTranscriptionTool:
         secs = int(seconds % 60)
         millisecs = int((seconds % 1) * 1000)
         return f"{hours:02d}:{minutes:02d}:{secs:02d}.{millisecs:03d}"
+    
+    def _generate_video_id(self, video_path: str) -> str:
+        """Generate a video ID from the video path."""
+        try:
+            # Use relative path if possible, otherwise use filename
+            path_obj = Path(video_path)
+            if path_obj.is_absolute():
+                # Try to make it relative to current working directory
+                try:
+                    relative_path = path_obj.relative_to(Path.cwd())
+                    return str(relative_path)
+                except ValueError:
+                    # If it can't be made relative, use the filename
+                    return path_obj.name
+            else:
+                return str(path_obj)
+        except Exception:
+            # Fallback to just the filename
+            return Path(video_path).name
 
 # Initialize the transcription tool
 transcription_tool = WhisperTranscriptionTool()
@@ -304,6 +336,11 @@ async def handle_list_tools() -> ListToolsResult:
                             "type": "boolean",
                             "description": "Include timestamps in segments and output",
                             "default": True
+                        },
+                        "video_id": {
+                            "type": "string",
+                            "description": "Custom video ID for segments (auto-generated from path if not provided)",
+                            "default": None
                         }
                     },
                     "required": ["video_path"]
@@ -323,6 +360,7 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> CallToolResu
             output_format = arguments.get("output_format", "text")
             output_file = arguments.get("output_file")
             include_timestamps = arguments.get("include_timestamps", True)
+            video_id = arguments.get("video_id")
             
             # Validate video file exists
             if not os.path.exists(video_path):
@@ -342,7 +380,8 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> CallToolResu
                 language=language,
                 output_format=output_format,
                 output_file=output_file,
-                include_timestamps=include_timestamps
+                include_timestamps=include_timestamps,
+                video_id=video_id
             )
             
             # Format response
