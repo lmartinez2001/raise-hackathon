@@ -11,6 +11,7 @@ import base64
 import logging
 from pathlib import Path
 import chromadb
+import datetime
 from typing import List, Dict, Any, Optional
 
 # Configure logging
@@ -75,7 +76,10 @@ class TranscriptionChromaDB:
             "video_id": result.get("video_id", "unknown"),
             "language": result.get("language", "unknown"),
             "model_name": model_name,
-            "total_segments": len(result.get("segments", []))
+            "total_segments": len(result.get("segments", [])),
+            "source": video_path,
+            "processing_date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "file_creation_date": datetime.datetime.fromtimestamp(os.path.getmtime(video_path)).strftime("%Y-%m-%d %H:%M:%S")
         }
         base_metadata.update(metadata)
         
@@ -415,8 +419,8 @@ async def main():
     """Main function to demonstrate the transcription and storage."""
     
     collection_name = "video_transcriptions" # TODO - add collection name
-    video_path = "data/video_short_3.mp4" # TODO - add path to video
-    database_path = "output/database/video_short_1" # TODO - add path to database
+    video_path = "data/video_short_2.mp4" # TODO - add path to video
+    database_path = "output/database/test_db" # TODO - add path to database
     
     if not os.path.exists(video_path):
         print(f"Video file not found: {video_path}")
@@ -436,10 +440,7 @@ async def main():
             model_name="base",
             language=None,  # Auto-detect
             video_id=None,  # Auto-generate from path
-            metadata={
-                "source": "test_video",
-                "processing_date": "2024-01-15"
-            },
+            metadata=None,
             store_video=False  # Store the video file in database
         )
         
