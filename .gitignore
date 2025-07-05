@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+store/
+.env
+.python-version
+*.json
