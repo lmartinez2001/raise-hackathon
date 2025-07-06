@@ -14,4 +14,5 @@ dependencies = [
     "aiofiles>=23.0.0",
     "pathlib2>=2.3.7",
     "chromadb>=1.0.15",
+    "smolagents>=1.19.0",
 ]
