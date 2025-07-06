@@ -17,7 +17,8 @@ os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 CREDENTIAL_FILE = os.getenv("CREDENTIAL_FILE")
 REDIRECT_URI = os.getenv("REDIRECT_URI")
-SCOPE = os.getenv("SCOPE")
+SCOPE = os.getenv("SCOPE").split(",")
+print(SCOPE)
 SESSION_DURATION = int(os.getenv("SESSION_DURATION", 300))
 
 
@@ -27,7 +28,7 @@ flow_sessions = {}
 credential_handler = CredentialHandler(
     client_secrets_file=CREDENTIAL_FILE,
     redirect_uri=REDIRECT_URI,
-    scopes=REDIRECT_URI,  # Use a list for scopes
+    scopes=SCOPE,  # Use a list for scopes
     session_duration=SESSION_DURATION,
 )
 
