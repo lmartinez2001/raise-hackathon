@@ -17,7 +17,6 @@ class CredentialHandler:
     ):
         self.client_secrets_file = client_secrets_file
         self.redirect_uri = redirect_uri
-        self.token_file = "token.json"
         self.scopes = scopes
         self.signer = TimestampSigner("super-secret-key")
         self.session_duration = session_duration
@@ -71,8 +70,3 @@ class CredentialHandler:
         """Create a signed session token"""
         data = json.dumps(token_data).encode()
         return self.signer.sign(data).decode()
-
-    # def _save_credentials(self, credentials):
-    #     """Save credentials to token file"""
-    #     with open(self.token_file, "w") as token_file:
-    #         token_file.write(credentials.to_json())

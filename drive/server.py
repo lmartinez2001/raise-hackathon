@@ -75,6 +75,7 @@ def auth_callback(request: Request):
     credentials = credential_handler.fetch_token(
         authorization_response=auth_response, flow=flow
     )
+    print(credentials.to_json())
     token_data = ast.literal_eval(credentials.to_json())
     token_data["timestamp"] = time.time()
     session_token = credential_handler.create_session_token(token_data)
