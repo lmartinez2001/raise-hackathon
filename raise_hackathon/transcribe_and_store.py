@@ -14,7 +14,7 @@ from typing import List, Dict, Any, Optional
 # Add the current directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from whisper_transcription_tool import WhisperTranscriptionTool
+from raise_hackathon.whisper_transcription_tool import WhisperTranscriptionTool
 
 class TranscriptionChromaDB:
     def __init__(self, collection_name: str = "video_transcriptions", database_path: str = "./chroma_db"):
