@@ -1,6 +1,6 @@
 from smolagents import InferenceClientModel, ToolCallingAgent, PromptTemplates
-from raise_hackathon.chroma_tool import ChromaQueryTool
-from raise_hackathon.final_answer_tool import VideoFinalAnswerTool
+from raise_hackathon.tools.chroma_tool import ChromaQueryTool
+from raise_hackathon.tools.final_answer_tool import VideoFinalAnswerTool
 # from raise_hackathon.prompts import system_prompt
 
 # Use default HF-hosted model

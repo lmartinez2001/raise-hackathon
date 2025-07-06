@@ -4,20 +4,43 @@ from raise_hackathon.transcribe_and_store import TranscriptionChromaDB
 
 class ChromaQueryTool(Tool):
     """
-    Search for video transcript segments that match a user query using ChromaDB.
+    Search video transcript segments with a natural language query using ChromaDB.
+
+    This tool returns the top matching transcript segments, including the text,
+    timestamp, video segment file, segment index, and similarity score. It is
+    designed to help the assistant locate exact clips in pre-processed meeting videos.
 
     Args:
-        query (str): A natural language question or search string.
+        query (str): A natural language query string (e.g. "budget discussion", "project decision").
 
     Returns:
-        str: A structured JSON string containing the most relevant video segments. Each result includes:
-            - The transcript text of the matching segment
-            - The segment's timestamp range within the video
-            - A reference to the corresponding video segment file
-            - The segment index
-            - The similarity score indicating how closely it matched the query
+        str: A JSON-formatted string with the query key and a list of up to 3 result segments.
+             Each result contains:
+             - segment_index (int): The index of the segment in the video.
+             - timestamp_range (str): Human-readable time span, e.g. "[03:26 - 03:29]".
+             - text (str): Transcript snippet for the matched segment.
+             - video_segment_file (str): Path to the saved video clip file.
+             - similarity_score (float): Numeric score indicating match relevance.
 
-    This is useful for retrieving precise clips from videos based on natural language questions.
+    Raises:
+        ValueError: If ChromaDB returns incomplete results or unexpected formats.
+
+    Example:
+        >>> tool = ChromaQueryTool()
+        >>> result = tool.forward("What was decided about the deadline?")
+        >>> print(result)
+        {
+          "query": "What was decided about the deadline?",
+          "results": [
+            {
+              "segment_index": 45,
+              "timestamp_range": "[05:12 - 05:15]",
+              "text": "We agreed to extend the deadline to next Monday.",
+              "video_segment_file": "meeting1_segment_0045.mp4",
+              "similarity_score": 0.82
+            }
+          ]
+        }
     """
 
     name = "chroma_query"
