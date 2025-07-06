@@ -1,7 +1,8 @@
+import argparse
 from typing import Optional, Dict, Any, List, Tuple
 from smolagents import CodeAgent, InferenceClientModel, tool
 
-from transcribe_and_store import TranscriptionChromaDB
+from transcribe_and_store import ChromaDB
 
 @tool
 def query_database(
@@ -25,33 +26,34 @@ def query_database(
         video_ids: List of ids of the video associated to the segments
         segment_idx: List of segment indices
         segment_ids: List of segment ids
-        start_times: List of start times of the segments
-        end_times: List of end times of the segments
+        timestamp_start: List of start timestamps of the segments
+        timestamp_end: List of end timestamps of the segments
         file_creation_date: List of file creation dates of the segments
     """
-
-    transcriber = TranscriptionChromaDB(collection_name=collection_name, database_path=database_path)
-    search_results = transcriber.search_segments(query_text, n_results=n_results, where=where)
+    # Initialize the database.
+    transcriber_database = ChromaDB(database_path=database_path,collection_name=collection_name, query_mode=True)
     
-    # Extract just the text content from the results
+    # Query the database.
+    search_results = transcriber_database.search_segments(query_text, n_results=n_results, where=where)
+    
+    # Extract just the text content from the results.
     documents = search_results["results"]
     segment_ids = documents["ids"][0]
     segment_texts = documents["documents"][0]
     metadatas = documents["metadatas"][0]
     video_ids = [metadata["video_id"] for metadata in metadatas]
-    start_times = [metadata["start_time"] for metadata in metadatas]
-    end_times = [metadata["end_time"] for metadata in metadatas]
+    timestamp_start = [metadata["start_time"] for metadata in metadatas]
+    timestamp_end = [metadata["end_time"] for metadata in metadatas]
     file_creation_date = [metadata["file_creation_date"] for metadata in metadatas]
     segment_idx = [metadata["segment_index"] for metadata in metadatas]
-
 
     return (
         segment_texts,
         video_ids,
         segment_idx,
         segment_ids,
-        start_times,
-        end_times,
+        timestamp_start,
+        timestamp_end,
         file_creation_date,
     )
 
@@ -73,7 +75,7 @@ def get_context_segments(
     Returns:
         Dictionary containing previous and next segments
     """
-    transcriber = TranscriptionChromaDB(collection_name=collection_name, database_path=database_path)
+    transcriber = ChromaDB(database_path=database_path, collection_name=collection_name, query_mode=True)
     
     # Get the segments before and after
     prev_segments = transcriber.get_previous_segments(segment_id, n_segments=context_window)
@@ -100,33 +102,82 @@ def get_segment_by_id(
     Returns:
         Dictionary containing the segment data
     """
-    transcriber = TranscriptionChromaDB(collection_name=collection_name, database_path=database_path)
+    transcriber = ChromaDB(collection_name=collection_name, database_path=database_path, query_mode=True)
     return transcriber.get_segment_by_id(segment_id)
 
 
+def parse_arguments():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="SmolAgent for querying video transcription database.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+        Examples:
+        python smolagent_transcriber.py --database output/meetings_db --collection meetings --query "What was discussed about AI?"
+        python smolagent_transcriber.py --database output/meetings_db --collection meetings --query "Find information about testing" --max-steps 10
+        """
+    )
+    
+    parser.add_argument(
+        "--database_path", "-d",
+        type=str,
+        required=True,
+        help="Path to ChromaDB database directory"
+    )
+    
+    parser.add_argument(
+        "--collection_name", "-c",
+        type=str,
+        required=True,
+        help="ChromaDB collection name"
+    )
+    
+    parser.add_argument(
+        "--query", "-q",
+        type=str,
+        required=True,
+        help="Query to ask the agent"
+    )
+    
+    parser.add_argument(
+        "--max-steps", "-s",
+        type=int,
+        default=5,
+        help="Maximum number of agent steps (default: 5)"
+    )
+    
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
+    import os
 
-    database_path = "output/database/test_db_oliver"
-    collection_name = "database_oliver"
+    # Parse command line arguments
+    args = parse_arguments()
+    
+    # Extract arguments
+    database_path = args.database_path
+    collection_name = args.collection_name
+    query = args.query
+    max_steps = args.max_steps
 
+    # Initialize model and agent
     model = InferenceClientModel()
     agent = CodeAgent(
         model=model,
-        name="video_agent",
+        name="video_agent", 
         description="An agent to query the database for video transcription results.",
         tools=[query_database],
-        max_steps=5,
+        max_steps=max_steps,
     )
 
     # Run the agent and capture the result
-    result = agent.run(f"Can you query the collection '{collection_name}' in the database at '{database_path}' to find if I have to convert my ongoing work?\
-        Answer the question and summarise all the main informations about the database entry you used to answer the question.")# If returned, the database transcriptions are located in the 'documents' field of the result.")
+    agent_query = f"First query the collection '{collection_name}' in the database at '{database_path}' to find '{query}'.\
+        In your answer, include the segment you used to answer the question, its original video id, its transcription, and its timestamps."
+    result = agent.run(agent_query)
 
     # Print the final result
     print("\n" + "="*60)
     print("AGENT RESULT:")
-    print("="*60)
+    print("="*60) 
     print(f"Result: {result}")
-
