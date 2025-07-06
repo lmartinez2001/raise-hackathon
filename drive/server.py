@@ -107,6 +107,26 @@ def auth_callback(request: Request):
     return response
 
 
+@app.get("/auth/logout")
+def logout(request: Request):
+    creds = credential_handler.get_credentials(request)
+    response = RedirectResponse(url="/")
+    response.delete_cookie("session_token")
+
+    if creds and creds.valid:
+        try:
+            requests.post(
+                "https://oauth2.googleapis.com/revoke",
+                params={"token": creds.token},
+                headers={"content-type": "application/x-www-form-urlencoded"},
+            )
+        except Exception as e:
+            # Continue with logout even if revocation fails
+            print(f"Error revoking token: {e}")
+
+    return response
+
+
 # ==> Functionalities
 @app.get("/drive/files")
 def list_files(request: Request):

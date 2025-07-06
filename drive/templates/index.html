@@ -10,6 +10,7 @@
     <h1>Welcome, {{ given_name }}!</h1>
     <button onclick="listFolders()">List Folders</button>
     <button onclick="listFiles()">List Files</button>
+    <button onclick="logout()">Logout</button>
     <div id="folder-list"></div>
     <div id="file-list"></div>
     {% else %}
@@ -36,6 +37,17 @@
                     (folder.parents ? " [Parent ID: " + folder.parents.join(", ") + "]" : "");
                 list.appendChild(li);
             });
+        }
+
+        async function logout() {
+            const response = await fetch("/auth/logout");
+            console.log(response);
+
+            if (response.ok) {
+                window.location.href = "/";
+            } else {
+                alert("Failed to log out. Please try again.");
+            }
         }
 
         async function listFiles() {
