@@ -108,6 +108,9 @@ def get_segment_by_id(
 
 if __name__ == "__main__":
 
+    database_path = "output/database/test_db_oliver"
+    collection_name = "database_oliver"
+
     model = InferenceClientModel()
     agent = CodeAgent(
         model=model,
@@ -118,7 +121,7 @@ if __name__ == "__main__":
     )
 
     # Run the agent and capture the result
-    result = agent.run("Can you query the collection 'video_transcriptions' in the database at output/database/test_db to find if I have to convert my ongoing work?\
+    result = agent.run(f"Can you query the collection '{collection_name}' in the database at '{database_path}' to find if I have to convert my ongoing work?\
         Answer the question and summarise all the main informations about the database entry you used to answer the question.")# If returned, the database transcriptions are located in the 'documents' field of the result.")
 
     # Print the final result
