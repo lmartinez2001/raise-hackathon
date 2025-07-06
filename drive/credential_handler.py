@@ -1,5 +1,6 @@
 import os
 import json
+import secrets
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
@@ -18,12 +19,11 @@ class CredentialHandler:
         self.client_secrets_file = client_secrets_file
         self.redirect_uri = redirect_uri
         self.scopes = scopes
-        self.signer = TimestampSigner("super-secret-key")
+        secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+        self.signer = TimestampSigner(secret_key)
         self.session_duration = session_duration
 
     def get_auth_url(self):
-        """Generate authorization URL for OAuth flow"""
-
         flow = Flow.from_client_secrets_file(
             self.client_secrets_file, scopes=self.scopes, redirect_uri=self.redirect_uri
         )
@@ -34,14 +34,42 @@ class CredentialHandler:
             prompt="consent",
         )
 
-        return authorization_url, state, flow
+        flow_state = {
+            "client_id": flow.client_config["client_id"],
+            "client_secret": flow.client_config["client_secret"],
+            "redirect_uri": self.redirect_uri,
+            "scopes": self.scopes,
+        }
+        signed_flow_state = self.signer.sign(json.dumps(flow_state).encode()).decode()
+        return authorization_url, state, signed_flow_state
 
-    def fetch_token(self, authorization_response, flow):
-        """Exchange authorization code for access token"""
+    def create_flow_from_state(self, flow_state):
+        try:
+            state_data = json.loads(self.signer.unsign(flow_state, max_age=300))
+            flow = Flow.from_client_config(
+                {
+                    "web": {
+                        "client_id": state_data["client_id"],
+                        "client_secret": state_data["client_secret"],
+                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                        "token_uri": "https://oauth2.googleapis.com/token",
+                        "redirect_uris": [state_data["redirect_uri"]],
+                    }
+                },
+                scopes=state_data["scopes"],
+                redirect_uri=state_data["redirect_uri"],
+            )
+            return flow
+        except (BadSignature, SignatureExpired):
+            return None
+
+    def fetch_token(self, authorization_response, flow_state):
+        flow = self.create_flow_from_state(flow_state)
+        if not flow:
+            return None
+
         flow.fetch_token(authorization_response=authorization_response)
-
-        credentials = flow.credentials
-        return credentials
+        return flow.credentials
 
     def fetch_user_info(self, credentials: Credentials):
         """Fetch user information from Google UserInfo API"""

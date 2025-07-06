@@ -26,13 +26,13 @@ SCOPE = os.getenv("SCOPE").split(",")
 SESSION_DURATION = int(os.getenv("SESSION_DURATION", 300))
 
 # For dev
-flow_sessions = {}
+# flow_sessions = {}
 
 # ==> Handler
 credential_handler = CredentialHandler(
     client_secrets_file=CREDENTIAL_FILE,
     redirect_uri=REDIRECT_URI,
-    scopes=SCOPE,  # Use a list for scopes
+    scopes=SCOPE,
     session_duration=SESSION_DURATION,
 )
 
@@ -59,33 +59,50 @@ def index(request: Request):
 
 @app.get("/auth/login")
 def login():
-    auth_url, state, flow = credential_handler.get_auth_url()
-    flow_sessions[state] = flow  # Store flow for callback
-    return RedirectResponse(url=auth_url)
+    auth_url, state, flow_state = credential_handler.get_auth_url()
+    response = RedirectResponse(url=auth_url)
+
+    response.set_cookie(
+        "flow_state",
+        flow_state,
+        max_age=300,
+        httponly=True,
+        secure=False,  # Enable in production
+        samesite="lax",
+    )
+    return response
 
 
 @app.get("/auth/callback")
 def auth_callback(request: Request):
     auth_response = str(request.url)
+    flow_state = request.cookies.get("flow_state")
+    if not flow_state:
+        return JSONResponse({"error": "Invalid flow state"}, status_code=400)
+
     parsed_url = urllib.parse.urlparse(auth_response)
     query_params = urllib.parse.parse_qs(parsed_url.query)
     state = query_params.get("state", [None])[0]
-    flow = flow_sessions.pop(state)
 
     credentials = credential_handler.fetch_token(
-        authorization_response=auth_response, flow=flow
+        authorization_response=auth_response, flow_state=flow_state
     )
-    print(credentials.to_json())
+    if not credentials:
+        return JSONResponse({"error": "Authentication failed"}, status_code=400)
+
     token_data = ast.literal_eval(credentials.to_json())
     token_data["timestamp"] = time.time()
     session_token = credential_handler.create_session_token(token_data)
 
     response = RedirectResponse("/")
+    response.delete_cookie("flow_state")
     response.set_cookie(
         "session_token",
         session_token,
         max_age=SESSION_DURATION,
         httponly=True,
+        secure=False,  # Enable in production
+        samesite="lax",
     )
     return response
 
