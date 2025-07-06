@@ -3,19 +3,28 @@ from google.oauth2.credentials import Credentials
 
 
 # ==> Helper function to create Drive service
-def create_drive_service(credentials_data):
-    """Create a Google Drive service object from credentials data."""
-    credentials = Credentials(
-        token=credentials_data["token"],
-        refresh_token=credentials_data.get("refresh_token"),
-        token_uri=credentials_data.get("token_uri"),
-        client_id=credentials_data.get("client_id"),
-        client_secret=credentials_data.get("client_secret"),
-        scopes=credentials_data.get("scopes", []),
-    )
-
+def get_drive_service(credentials: Credentials):
     service = build("drive", "v3", credentials=credentials)
     return service
+
+
+def get_contexta_drive_id(service):
+    results = service.drives().list().execute()
+    drives = results.get("drives", [])
+    if not drives:
+        raise Exception("No shared drives found.")
+    for shared_drive in drives:
+        if shared_drive["name"] == "Contexta":
+            return shared_drive["id"]
+    return None
+
+
+def get_file_structure(service, root_id):
+    pass
+
+
+def get_videos(service, drive_id):
+    pass
 
 
 # def search_file(file_name):

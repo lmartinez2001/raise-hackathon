@@ -3,8 +3,10 @@ import ast
 import time
 import requests
 import urllib.parse
+import drive_service as drive
 
 from dotenv import load_dotenv
+from collections import defaultdict
 from fastapi.templating import Jinja2Templates
 from credential_handler import CredentialHandler
 from fastapi import FastAPI, Request, Response, HTTPException
@@ -13,18 +15,20 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 load_dotenv()
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
+
+
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
+# ==> Env variables
 CREDENTIAL_FILE = os.getenv("CREDENTIAL_FILE")
 REDIRECT_URI = os.getenv("REDIRECT_URI")
 SCOPE = os.getenv("SCOPE").split(",")
-print(SCOPE)
 SESSION_DURATION = int(os.getenv("SESSION_DURATION", 300))
 
-
+# For dev
 flow_sessions = {}
 
-# create handler
+# ==> Handler
 credential_handler = CredentialHandler(
     client_secrets_file=CREDENTIAL_FILE,
     redirect_uri=REDIRECT_URI,
@@ -35,17 +39,27 @@ credential_handler = CredentialHandler(
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
-    token_data = credential_handler.load_session_token(request)
-    is_connected = token_data is not None
+    creds = credential_handler.get_credentials(request)
+    is_connected = creds is not None
+
+    if creds is not None:
+        user_info = credential_handler.fetch_user_info(creds)
+    else:
+        user_info = {}
 
     return templates.TemplateResponse(
-        "index.html", {"request": request, "is_connected": is_connected}
+        "index.html",
+        {
+            "request": request,
+            "is_connected": is_connected,
+            "given_name": user_info.get("given_name", ""),
+        },
     )
 
 
 @app.get("/auth/login")
 def login():
-    auth_url, state, flow = credential_handler.get_authorization_url()
+    auth_url, state, flow = credential_handler.get_auth_url()
     flow_sessions[state] = flow  # Store flow for callback
     return RedirectResponse(url=auth_url)
 
@@ -63,9 +77,9 @@ def auth_callback(request: Request):
     )
     token_data = ast.literal_eval(credentials.to_json())
     token_data["timestamp"] = time.time()
+    session_token = credential_handler.create_session_token(token_data)
 
     response = RedirectResponse("/")
-    session_token = credential_handler.create_session_token(token_data)
     response.set_cookie(
         "session_token",
         session_token,
@@ -75,25 +89,47 @@ def auth_callback(request: Request):
     return response
 
 
-@app.get("/drive/folders")
-def list_folders(request: Request):
-    token_data = credential_handler.load_session_token(request)
-    if not token_data:
-        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+# ==> Functionalities
+@app.get("/drive/files")
+def list_files(request: Request):
+    creds = credential_handler.get_credentials(request)
+    service = drive.get_drive_service(creds)
+    results = service.files().list().execute()
+    items = results.get("files", [])
+    return items
 
-    access_token = token_data["token"]
-    headers = {"Authorization": f"Bearer {access_token}"}
-    query = "mimeType='application/vnd.google-apps.folder'"
-    params = {
-        "q": query,
-        "fields": "files(id, name, driveId, parents)",
-        "pageSize": 100,
-        "includeItemsFromAllDrives": "true",
-        "supportsAllDrives": "true",
-    }
-    res = requests.get(
-        "https://www.googleapis.com/drive/v3/files", headers=headers, params=params
+
+@app.get("/drive/tree")
+def list_files(request: Request):
+    creds = credential_handler.get_credentials(request)
+    service = drive.get_drive_service(creds)
+
+    contexta_drive_id = drive.get_contexta_drive_id(service)
+    if contexta_drive_id is None:
+        raise HTTPException(status_code=404, detail="Contexta drive not found")
+
+    results = (
+        service.files()
+        .list(
+            corpora="drive",
+            driveId=contexta_drive_id,
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+            fields="nextPageToken, files(id, name, mimeType, parents, createdTime, webViewLink, webContentLink, iconLink)",
+        )
+        .execute()
     )
-    if res.status_code != 200:
-        raise HTTPException(status_code=500, detail=res.json())
-    return res.json()
+
+    all_files = results.get("files", [])
+
+    id_to_name = {}
+    children = defaultdict(list)
+    for item in all_files:
+        id_to_name[item["id"]] = item["name"]
+        children[item["parents"][0]].append(item["id"])
+
+    def build_tree(root_id):
+        return {id_to_name[child]: build_tree(child) for child in children[root_id]}
+
+    tree = {contexta_drive_id: build_tree(contexta_drive_id)}
+    return tree

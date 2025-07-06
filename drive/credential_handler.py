@@ -11,9 +11,9 @@ class CredentialHandler:
     def __init__(
         self,
         scopes,
-        client_secrets_file="creds.json",
-        session_duration=300,
-        redirect_uri="http://localhost:8000/auth/callback",
+        client_secrets_file,
+        session_duration,
+        redirect_uri,
     ):
         self.client_secrets_file = client_secrets_file
         self.redirect_uri = redirect_uri
@@ -22,7 +22,7 @@ class CredentialHandler:
         self.signer = TimestampSigner("super-secret-key")
         self.session_duration = session_duration
 
-    def get_authorization_url(self):
+    def get_auth_url(self):
         """Generate authorization URL for OAuth flow"""
 
         flow = Flow.from_client_secrets_file(
@@ -44,7 +44,7 @@ class CredentialHandler:
         credentials = flow.credentials
         return credentials
 
-    def _fetch_user_info(self, credentials: Credentials):
+    def fetch_user_info(self, credentials: Credentials):
         """Fetch user information from Google UserInfo API"""
         try:
 
@@ -55,7 +55,7 @@ class CredentialHandler:
             print(f"Error fetching user info: {e}")
             return {}
 
-    def load_session_token(self, request: Request) -> dict | None:
+    def get_credentials(self, request: Request) -> dict | None:
         session_token = request.cookies.get("session_token")
         if session_token is None:
             return None
@@ -63,10 +63,7 @@ class CredentialHandler:
             data = self.signer.unsign(session_token, max_age=self.session_duration)
             token = json.loads(data)
             creds = Credentials.from_authorized_user_info(token)
-
-            user_info = self._fetch_user_info(creds)
-            print(user_info)
-            return token
+            return creds
         except (BadSignature, SignatureExpired):
             return None
 

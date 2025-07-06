@@ -7,9 +7,11 @@
 
 <body>
     {% if is_connected %}
-    <h2>You are connected to Google Drive!</h2>
-    <button onclick="listFolders()">List</button>
+    <h1>Welcome, {{ given_name }}!</h1>
+    <button onclick="listFolders()">List Folders</button>
+    <button onclick="listFiles()">List Files</button>
     <div id="folder-list"></div>
+    <div id="file-list"></div>
     {% else %}
     <h2>Connect your Google account</h2>
     <a href="/auth/login"><button>Login with Google</button></a>
@@ -36,42 +38,27 @@
             });
         }
 
-
-        async function showDriveTree() {
-            const response = await fetch("/drive/tree");
+        async function listFiles() {
+            const response = await fetch("/drive/files");
             if (response.status === 401) {
                 alert("Session expired. Please log in again.");
                 window.location.href = "/auth/login";
                 return;
             }
             const data = await response.json();
-            const treeDiv = document.getElementById("drive-tree");
-            treeDiv.innerHTML = "";
-            if (data.tree) {
-                treeDiv.appendChild(renderTreeDropdown(data.tree));
-            }
+            const list = document.getElementById("file-list");
+            list.innerHTML = "";
+            console.log(data);
+
+            // (data.files || []).forEach(folder => {
+            //     const li = document.createElement("li");
+            //     li.textContent = folder.name + " (ID: " + folder.id + ")" +
+            //         (folder.driveId ? " [Drive ID: " + folder.driveId + "]" : "") +
+            //         (folder.parents ? " [Parent ID: " + folder.parents.join(", ") + "]" : "");
+            //     list.appendChild(li);
+            // });
         }
 
-        function renderTreeDropdown(tree) {
-            const ul = document.createElement("ul");
-            for (const node of tree) {
-                const li = document.createElement("li");
-                if (node.mimeType === "application/vnd.google-apps.folder") {
-                    const details = document.createElement("details");
-                    const summary = document.createElement("summary");
-                    summary.textContent = "📁 " + node.name;
-                    details.appendChild(summary);
-                    if (node.children && node.children.length > 0) {
-                        details.appendChild(renderTreeDropdown(node.children));
-                    }
-                    li.appendChild(details);
-                } else {
-                    li.textContent = "📄 " + node.name;
-                }
-                ul.appendChild(li);
-            }
-            return ul;
-        }
     </script>
 </body>
 
