@@ -5,35 +5,29 @@ import requests
 import urllib.parse
 import drive_service as drive
 
-from dotenv import load_dotenv
+from settings import Settings
+
+# from dotenv import load_dotenv
 from collections import defaultdict
 from fastapi.templating import Jinja2Templates
 from credential_handler import CredentialHandler
 from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 
-load_dotenv()
+# load_dotenv()
+settings = Settings()
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-
-os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
-
-# ==> Env variables
-CREDENTIAL_FILE = os.getenv("CREDENTIAL_FILE")
-REDIRECT_URI = os.getenv("REDIRECT_URI")
-SCOPE = os.getenv("SCOPE").split(",")
-SESSION_DURATION = int(os.getenv("SESSION_DURATION", 300))
-
-# For dev
-# flow_sessions = {}
+if settings.environment.lower() in ("dev", "development"):
+    os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 # ==> Handler
 credential_handler = CredentialHandler(
-    client_secrets_file=CREDENTIAL_FILE,
-    redirect_uri=REDIRECT_URI,
-    scopes=SCOPE,
-    session_duration=SESSION_DURATION,
+    client_secrets_file=settings.credential_file,
+    redirect_uri=settings.redirect_uri,
+    scopes=settings.scope.split(","),
+    session_duration=settings.session_duration,
 )
 
 
@@ -67,7 +61,7 @@ def login():
         flow_state,
         max_age=300,
         httponly=True,
-        secure=False,  # Enable in production
+        secure=settings.cookie_secure,
         samesite="lax",
     )
     return response
@@ -99,9 +93,9 @@ def auth_callback(request: Request):
     response.set_cookie(
         "session_token",
         session_token,
-        max_age=SESSION_DURATION,
+        max_age=settings.session_duration,
         httponly=True,
-        secure=False,  # Enable in production
+        secure=settings.cookie_secure,
         samesite="lax",
     )
     return response
