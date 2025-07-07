@@ -1,10 +1,14 @@
 import asyncio
 import json
-from typing import Dict, Any, List
+import argparse
+from typing import Dict, Any, List, Optional, Tuple
 import logging
 import os
 import sys
 
+from mcp.server import Server
+from mcp.server.models import InitializationOptions
+from mcp.server.lowlevel.server import NotificationOptions
 from mcp.server.stdio import stdio_server
 from mcp.types import (
     CallToolResult,
@@ -14,7 +18,9 @@ from mcp.types import (
     ImageContent,
     EmbeddedResource,
 )
+from smolagents import CodeAgent, InferenceClientModel, tool
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), ""))
 from slack.slack_database_handler import SlackDatabaseHandler
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -23,9 +29,9 @@ logger = logging.getLogger(__name__)
 class SlackMCPTools:
     """MCP tools for Slack database operations."""
     
-    def __init__(self, database_path: str = "output/database/slack"):
+    def __init__(self, database_path: str, collection_name: str):
         """Initialize the Slack MCP tools."""
-        self.handler = SlackDatabaseHandler(database_path)
+        self.handler = SlackDatabaseHandler(database_path, collection_name)
     
     def get_tools(self) -> List[Tool]:
         """Get the list of available tools."""
@@ -183,27 +189,264 @@ class SlackMCPTools:
                 content=[TextContent(type="text", text=f"Error: {str(e)}")]
             )
 
-# Global instance
-slack_tools = SlackMCPTools()
+@tool
+def search_slack_messages(
+    database_path: str,
+    collection_name: str,
+    query_text: str,
+    channel_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    n_results: int = 5,
+) -> Tuple[List[str], List[str], List[str], List[str], List[bool]]:
+    """Search for messages in the Slack database.
+    
+    Args:
+        database_path: Path to the database
+        collection_name: Name of the collection to query
+        query_text: Text to search for in messages
+        channel_id: Optional: Filter by specific channel ID
+        user_id: Optional: Filter by specific user ID
+        n_results: Number of results to return (default: 5)
+        
+    Returns:
+        usernames: List of usernames who sent the messages
+        channel_names: List of channel names where messages were sent
+        message_texts: List of message texts
+        timestamps: List of message timestamps
+        is_thread_replies: List of boolean indicating if messages are thread replies
+    """
+    # Initialize the Slack tools
+    tools = SlackMCPTools(database_path, collection_name)
+    
+    # Prepare arguments
+    arguments = {
+        "query_text": query_text,
+        "n_results": n_results
+    }
+    
+    if channel_id:
+        arguments["channel_id"] = channel_id
+    if user_id:
+        arguments["user_id"] = user_id
+    
+    # Call the tool
+    result = asyncio.run(tools.call_tool("slack_search_messages", arguments))
+    
+    # Parse the result
+    messages_data = json.loads(result.content[0].text)
+    messages = messages_data.get("results", [])
+    
+    # Extract data
+    usernames = [msg.get("username", "Unknown") for msg in messages]
+    channel_names = [msg.get("channel_name", "Unknown") for msg in messages]
+    message_texts = [msg.get("text", "No text") for msg in messages]
+    timestamps = [msg.get("timestamp", "Unknown") for msg in messages]
+    is_thread_replies = [msg.get("is_thread_reply", False) for msg in messages]
+    
+    return (usernames, channel_names, message_texts, timestamps, is_thread_replies)
 
-async def main():
-    """Main function to run the Slack MCP server."""
-    # Create stdio server
-    server = stdio_server()
+
+@tool
+def get_slack_channels(
+    database_path: str,
+    collection_name: str,
+) -> Tuple[List[str], List[str], List[int], List[bool]]:
+    """Get list of channels from the Slack database.
     
-    @server.list_tools()
-    async def handle_list_tools() -> ListToolsResult:
-        """Handle list tools request."""
-        return ListToolsResult(tools=slack_tools.get_tools())
+    Args:
+        database_path: Path to the database
+        collection_name: Name of the collection to query
+        
+    Returns:
+        channel_names: List of channel names
+        channel_ids: List of channel IDs
+        member_counts: List of member counts
+        is_private: List of boolean indicating if channels are private
+    """
+    # Initialize the Slack tools
+    tools = SlackMCPTools(database_path, collection_name)
     
-    @server.call_tool()
-    async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> CallToolResult:
-        """Handle tool call requests."""
-        return await slack_tools.call_tool(name, arguments)
+    # Call the tool
+    result = asyncio.run(tools.call_tool("slack_get_channels", {}))
     
-    # Run the server
-    async with server.run_session() as session:
-        await session.run()
+    # Parse the result
+    channels = json.loads(result.content[0].text)
+    
+    # Extract data
+    channel_names = [channel.get("name", "Unknown") for channel in channels]
+    channel_ids = [channel.get("channel_id", "Unknown") for channel in channels]
+    member_counts = [channel.get("member_count", 0) for channel in channels]
+    is_private = [channel.get("is_private", False) for channel in channels]
+    
+    return (channel_names, channel_ids, member_counts, is_private)
+
+
+@tool
+def get_slack_statistics(
+    database_path: str,
+    collection_name: str,
+) -> Tuple[int, int, int, int]:
+    """Get statistics about the Slack database.
+    
+    Args:
+        database_path: Path to the database
+        collection_name: Name of the collection to query
+        
+    Returns:
+        total_messages: Total number of messages
+        total_channels: Total number of channels
+        unique_users: Number of unique users
+        total_documents: Total number of documents
+    """
+    # Initialize the Slack tools
+    tools = SlackMCPTools(database_path, collection_name)
+    
+    # Call the tool
+    result = asyncio.run(tools.call_tool("slack_get_stats", {}))
+    
+    # Parse the result
+    stats = json.loads(result.content[0].text)
+    
+    return (
+        stats.get("total_messages", 0),
+        stats.get("total_channels", 0),
+        stats.get("unique_users", 0),
+        stats.get("total_documents", 0)
+    )
+
+
+@tool
+def get_channel_messages(
+    database_path: str,
+    collection_name: str,
+    channel_id: str,
+    limit: int = 10,
+) -> Tuple[List[str], List[str], List[str], List[str]]:
+    """Get messages from a specific Slack channel.
+    
+    Args:
+        database_path: Path to the database
+        collection_name: Name of the collection to query
+        channel_id: Channel ID to get messages from
+        limit: Maximum number of messages to return (default: 10)
+        
+    Returns:
+        usernames: List of usernames who sent the messages
+        message_texts: List of message texts
+        timestamps: List of message timestamps
+        thread_ts: List of thread timestamps (if applicable)
+    """
+    # Initialize the Slack tools
+    tools = SlackMCPTools(database_path, collection_name)
+    
+    # Call the tool
+    result = asyncio.run(tools.call_tool("slack_get_channel_messages", {
+        "channel_id": channel_id,
+        "limit": limit
+    }))
+    
+    # Parse the result
+    messages_data = json.loads(result.content[0].text)
+    messages = messages_data.get("messages", [])
+    
+    # Extract data
+    usernames = [msg.get("username", "Unknown") for msg in messages]
+    message_texts = [msg.get("text", "No text") for msg in messages]
+    timestamps = [msg.get("timestamp", "Unknown") for msg in messages]
+    thread_ts = [msg.get("thread_ts", None) for msg in messages]
+    
+    return (usernames, message_texts, timestamps, thread_ts)
+
+
+def parse_arguments():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="SmolAgent for querying Slack database using natural language.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+        Examples:
+        python slack_agent.py --database output/database/slack --collection slack_data --query "What was discussed about meetings?"
+        python slack_agent.py --database output/database/slack --collection slack_data --query "Show me all channels and their member counts"
+        python slack_agent.py --database output/database/slack --collection slack_data --query "Find messages from gaubil.julien about deadlines"
+        """
+    )
+    
+    parser.add_argument(
+        "--database_path", "-d",
+        type=str,
+        required=True,
+        help="Path to ChromaDB database directory"
+    )
+    
+    parser.add_argument(
+        "--collection_name", "-c",
+        type=str,
+        required=True,
+        help="ChromaDB collection name"
+    )
+    
+    parser.add_argument(
+        "--query", "-q",
+        type=str,
+        required=True,
+        help="Query to ask the agent"
+    )
+    
+    parser.add_argument(
+        "--max-steps", "-s",
+        type=int,
+        default=5,
+        help="Maximum number of agent steps (default: 5)"
+    )
+    
+    return parser.parse_args()
+
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    import os
+
+    # Parse command line arguments
+    args = parse_arguments()
+    
+    # Extract arguments
+    database_path = args.database_path
+    collection_name = args.collection_name
+    query = args.query
+    max_steps = args.max_steps
+
+    # Initialize model and agent
+    model = InferenceClientModel()
+    agent = CodeAgent(
+        model=model,
+        name="slack_agent", 
+        description="An agent to query the Slack database for messages, channels, and statistics using natural language.",
+        tools=[search_slack_messages, get_slack_channels, get_slack_statistics, get_channel_messages],
+        max_steps=max_steps,
+    )
+
+    # Run the agent and capture the result
+    agent_query = f"""Query the Slack collection '{collection_name}' in the database at '{database_path}' to answer: '{query}'. 
+        Use the available tools to search for messages, get channel information, and retrieve statistics as needed. 
+        In your answer, include relevant message content, usernames, channel names, and timestamps when applicable.
+        
+        IMPORTANT DATA FORMAT NOTES:
+        - search_slack_messages() returns: (usernames, channel_names, message_texts, timestamps, is_thread_replies)
+        - get_slack_channels() returns: (channel_names, channel_ids, member_counts, is_private)
+        - get_slack_statistics() returns: (total_messages, total_channels, unique_users, total_documents)
+        - get_channel_messages() returns: (usernames, message_texts, timestamps, thread_ts)
+        
+        All functions return tuples of lists, not dictionaries or lists of dictionaries.
+        When processing results, use zip() to combine the lists into message objects.
+        
+        Example:
+        usernames, channel_names, message_texts, timestamps, is_thread_replies = search_slack_messages(...)
+        for username, channel_name, text, timestamp, is_thread in zip(usernames, channel_names, message_texts, timestamps, is_thread_replies):
+            print(f"User: {{username}}, Channel: {{channel_name}}, Message: {{text}}, Time: {{timestamp}}")"""
+    result = agent.run(agent_query)
+
+    # Print the final result
+    print("\n" + "="*60)
+    print("SLACK AGENT RESULT:")
+    print("="*60) 
+    print(f"Query: {query}")
+    print(f"Result: {result}") 
