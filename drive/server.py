@@ -28,6 +28,7 @@ credential_handler = CredentialHandler(
     redirect_uri=settings.redirect_uri,
     scopes=settings.scope.split(","),
     session_duration=settings.session_duration,
+    secret_key=settings.secret_key,
 )
 
 
@@ -125,10 +126,16 @@ def logout(request: Request):
 @app.get("/drive/files")
 def list_files(request: Request):
     creds = credential_handler.get_credentials(request)
+    if not creds:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
     service = drive.get_drive_service(creds)
-    results = service.files().list().execute()
-    items = results.get("files", [])
-    return items
+    try:
+        results = service.files().list().execute()
+        items = results.get("files", [])
+        return items
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching files: {str(e)}")
 
 
 @app.get("/drive/tree")
@@ -136,7 +143,7 @@ def list_files(request: Request):
     creds = credential_handler.get_credentials(request)
     service = drive.get_drive_service(creds)
 
-    contexta_drive_id = drive.get_contexta_drive_id(service)
+    contexta_drive_id = drive.get_contexta_drive_id(service, settings.target_drive_name)
     if contexta_drive_id is None:
         raise HTTPException(status_code=404, detail="Contexta drive not found")
 

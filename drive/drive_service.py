@@ -8,27 +8,65 @@ def get_drive_service(credentials: Credentials):
     return service
 
 
-def get_contexta_drive_id(service):
+def get_contexta_drive_id(service, drive_name):
     results = service.drives().list().execute()
     drives = results.get("drives", [])
     if not drives:
         raise Exception("No shared drives found.")
     for shared_drive in drives:
-        if shared_drive["name"] == "Contexta":
+        if shared_drive["name"] == drive_name:
             return shared_drive["id"]
     return None
 
 
 def get_file_structure(service, root_id):
-    pass
+    files = []
+    page_token = None
+
+    while True:
+        response = (
+            service.files()
+            .list(
+                q=f"'{root_id}' in parents",
+                spaces="drive",
+                fields="nextPageToken, files(id, name, mimeType, parents)",
+                pageToken=page_token,
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True,
+            )
+            .execute()
+        )
+
+        files.extend(response.get("files", []))
+        page_token = response.get("nextPageToken")
+        if not page_token:
+            break
+
+    return files
 
 
 def get_videos(service, drive_id):
-    pass
+    videos = []
+    page_token = None
 
+    while True:
+        response = (
+            service.files()
+            .list(
+                q="mimeType contains 'video/'",
+                corpora="drive",
+                driveId=drive_id,
+                includeItemsFromAllDrives=True,
+                supportsAllDrives=True,
+                fields="nextPageToken, files(id, name, mimeType, webViewLink)",
+                pageToken=page_token,
+            )
+            .execute()
+        )
 
-# def search_file(file_name):
-#     token_data = credential_handler.load_session_token(request)
-#     if not token_data:
-#         return JSONResponse({"error": "Not authenticated"}, status_code=401)
-#     service = create_drive_service(token_data)
+        videos.extend(response.get("files", []))
+        page_token = response.get("nextPageToken")
+        if not page_token:
+            break
+
+    return videos

@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     session_duration: int
     redirect_uri: str
     scope: str
+    secret_key: str
+    target_drive_name: str
 
     class Config:
         env_file = "../.env"

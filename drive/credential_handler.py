@@ -1,8 +1,8 @@
 import os
 import json
 import secrets
-from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import Flow
+from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from itsdangerous import TimestampSigner, BadSignature, SignatureExpired
@@ -10,16 +10,11 @@ from itsdangerous import TimestampSigner, BadSignature, SignatureExpired
 
 class CredentialHandler:
     def __init__(
-        self,
-        scopes,
-        client_secrets_file,
-        session_duration,
-        redirect_uri,
+        self, scopes, client_secrets_file, session_duration, redirect_uri, secret_key
     ):
         self.client_secrets_file = client_secrets_file
         self.redirect_uri = redirect_uri
         self.scopes = scopes
-        secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
         self.signer = TimestampSigner(secret_key)
         self.session_duration = session_duration
 
@@ -90,6 +85,7 @@ class CredentialHandler:
             data = self.signer.unsign(session_token, max_age=self.session_duration)
             token = json.loads(data)
             creds = Credentials.from_authorized_user_info(token)
+
             return creds
         except (BadSignature, SignatureExpired):
             return None
