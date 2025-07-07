@@ -71,6 +71,12 @@ def login():
 @app.get("/auth/callback")
 def auth_callback(request: Request):
     auth_response = str(request.url)
+    if settings.environment.lower() not in (
+        "dev",
+        "development",
+    ) and auth_response.startswith("http://"):
+        auth_response = auth_response.replace("http://", "https://", 1)
+
     flow_state = request.cookies.get("flow_state")
     if not flow_state:
         return JSONResponse({"error": "Invalid flow state"}, status_code=400)
