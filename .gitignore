@@ -9,4 +9,6 @@ wheels/
 # Virtual environments
 .venv
 .env
+
 chroma_db/*
+.vscode/

@@ -1,61 +1,80 @@
 import argparse
 from typing import Optional, Dict, Any, List, Tuple
-from smolagents import CodeAgent, InferenceClientModel, tool
+from smolagents import CodeAgent, InferenceClientModel, Tool
 
-from transcribe_and_store import ChromaDB
+from video.transcribe_and_store import TranscriptionChromaDB
 
-@tool
-def query_database(
-    database_path: str,
-    collection_name: str,
-    query_text: str,
-    where: Optional[Dict[str, Any]] = None,
-    n_results: int = 3,
-) -> Tuple[List[str], List[str], List[int], List[str], List[float], List[float], List[str]]:
-    """Query the database for segments matching the query text.
-    
-    Args:
-        database_path: Path to the database
-        collection_name: Name of the collection to query
-        query_text: Text to search for
-        where: Optional dictionary of metadata to filter by
-        n_results: Number of results to return (default: 1)
-        
-    Returns:
-        segment_texts: List of texts of the segments
-        video_ids: List of ids of the video associated to the segments
-        segment_idx: List of segment indices
-        segment_ids: List of segment ids
-        timestamp_start: List of start timestamps of the segments
-        timestamp_end: List of end timestamps of the segments
-        file_creation_date: List of file creation dates of the segments
+class ChromaQueryDatabaseTool(Tool):
     """
-    # Initialize the database.
-    transcriber_database = ChromaDB(database_path=database_path,collection_name=collection_name, query_mode=True)
-    
-    # Query the database.
-    search_results = transcriber_database.search_segments(query_text, n_results=n_results, where=where)
-    
-    # Extract just the text content from the results.
-    documents = search_results["results"]
-    segment_ids = documents["ids"][0]
-    segment_texts = documents["documents"][0]
-    metadatas = documents["metadatas"][0]
-    video_ids = [metadata["video_id"] for metadata in metadatas]
-    timestamp_start = [metadata["start_time"] for metadata in metadatas]
-    timestamp_end = [metadata["end_time"] for metadata in metadatas]
-    file_creation_date = [metadata["file_creation_date"] for metadata in metadatas]
-    segment_idx = [metadata["segment_index"] for metadata in metadatas]
+    Query ChromaDB for transcript segments matching a natural language query.
 
-    return (
-        segment_texts,
-        video_ids,
-        segment_idx,
-        segment_ids,
-        timestamp_start,
-        timestamp_end,
-        file_creation_date,
-    )
+    This tool performs a semantic search over a video transcription database,
+    returning metadata-rich results like timestamps, segment IDs, and file info.
+
+    Args:
+        query_text (str): Natural language search query.
+
+    Returns:
+        Dict[str, List]: A dictionary with:
+            - segment_texts: List of transcript texts
+            - video_ids: List of video IDs
+            - segment_idx: List of segment indices
+            - segment_ids: List of segment unique IDs
+            - timestamp_start: List of segment start times
+            - timestamp_end: List of segment end times
+            - file_creation_date: List of file creation dates
+    """
+
+    name = "chroma_query_database"
+    description = "Search ChromaDB for transcript segments using natural language queries and optional metadata filters."
+    inputs = {
+        "query_text": {
+            "type": "string",
+            "description": "Natural language text to search for."
+        },
+    }
+    output_type = "object"
+
+    def __init__(self, collection_name: str, database_path: str):
+        super().__init__()
+        self.collection_name = collection_name
+        self.database_path = database_path
+        self.transcriber_database = TranscriptionChromaDB(
+            database_path=self.database_path,
+            collection_name=self.collection_name,
+        )
+
+    def forward(
+        self,
+        query_text: str,
+    ) -> Dict[str, List]:
+        # Initialize the database.
+
+        # Query the database.
+        search_results = self.transcriber_database.search_segments(
+            query_text, n_results=3, where=None
+        )
+
+        # Extract the results.
+        documents = search_results["results"]
+        segment_ids = documents["ids"][0]
+        segment_texts = documents["documents"][0]
+        metadatas = documents["metadatas"][0]
+        video_ids = [metadata["video_id"] for metadata in metadatas]
+        timestamp_start = [metadata["start_time"] for metadata in metadatas]
+        timestamp_end = [metadata["end_time"] for metadata in metadatas]
+        file_creation_date = [metadata["file_creation_date"] for metadata in metadatas]
+        segment_idx = [metadata["segment_index"] for metadata in metadatas]
+
+        return {
+            "segment_texts": segment_texts,
+            "video_ids": video_ids,
+            "segment_idx": segment_idx,
+            "segment_ids": segment_ids,
+            "timestamp_start": timestamp_start,
+            "timestamp_end": timestamp_end,
+            "file_creation_date": file_creation_date,
+        }
 
 
 def get_context_segments(

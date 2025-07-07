@@ -29,7 +29,7 @@ class TranscriptionChromaDB(ChromaDB):
     def __init__(self, database_path: str, collection_name: str):
         """Initialize the transcription and ChromaDB integration."""
 
-        super().__init__(database_path, collection_name, query_mode=False) 
+        super().__init__(database_path=database_path, collection_name=collection_name) 
 
         self.transcription_tool = WhisperTranscriptionTool()
     
