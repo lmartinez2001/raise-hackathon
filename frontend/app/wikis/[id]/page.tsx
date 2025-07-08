@@ -3,25 +3,29 @@ import Link from "next/link"
 import Header from "@/app/components/Header"
 import Footer from "@/app/components/Footer"
 import MarkdownRenderer from "@/app/components/MarkdownRenderer"
-import { mockWikis } from "@/app/lib/mock-wikis"
-import type { Wiki } from "@/app/lib/mock-wikis"
 import { ArrowLeft } from "lucide-react"
 
-// This is now an async Server Component. It fetches data on the server before rendering.
-export default async function WikiPage({ params }: { params: { id: string } }) {
-  // --- PREVIEW-FRIENDLY DATA FETCHING ---
-  // In a preview environment, params.id might not be a valid ID from our mock data.
-  // To prevent a "Not Found" error during preview, we first try to find the specific wiki.
-  // If it's not found, we fall back to the first wiki in the mock array as a default.
-  // In a real application connected to a database, the original `notFound()` call is the correct behavior.
-  let wiki: Wiki | undefined = mockWikis.find((w) => w.id === params.id)
+async function getWiki(id: string) {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:8000'}/api/wikis/${id}`, {
+      cache: 'no-store'
+    })
 
-  if (!wiki) {
-    // Fallback for previewing purposes
-    wiki = mockWikis[0]
+    if (!response.ok) {
+      return null
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error('Error fetching wiki:', error)
+    return null
   }
+}
 
-  // If after the fallback, there's still no wiki (e.g., mockWikis is empty), then show not found.
+export default async function WikiPage({ params }: { params: { id: string } }) {
+  const resolvedParams = await params
+  const wiki = await getWiki(resolvedParams.id)
+
   if (!wiki) {
     notFound()
   }

@@ -2,7 +2,13 @@ import Link from "next/link"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowRight } from "lucide-react"
-import type { Wiki } from "../lib/mock-wikis"
+
+interface Wiki {
+  id: string
+  title: string
+  summary: string
+  href: string
+}
 
 export default function WikiCard({ wiki }: { wiki: Wiki }) {
   return (

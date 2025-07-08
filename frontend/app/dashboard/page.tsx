@@ -19,28 +19,34 @@ const getGreeting = () => {
 export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [greeting, setGreeting] = useState("")
-  const [userName, setUserName] = useState("") // default fallback
+  const [userName, setUserName] = useState("")
   const router = useRouter()
 
-  // Set greeting and fetch user info on client-side mount
   useEffect(() => {
     setGreeting(getGreeting())
 
-    // Fetch user information
-    fetch('/api/user', {
-      credentials: 'include'
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.is_connected && data.given_name) {
-          setUserName(data.given_name)
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/status', {
+          credentials: 'include'
+        })
+        const authData = await response.json()
+        
+        if (!authData.authenticated) {
+          router.push('/')
+          return
         }
-      })
-      .catch(err => {
-        console.error('Failed to fetch user info:', err)
-        // Keep default name on error
-      })
-  }, [])
+        
+        if (authData.user?.given_name) {
+          setUserName(authData.user.given_name)
+        }
+      } catch {
+        router.push('/')
+      }
+    }
+
+    checkAuth()
+  }, [router])
 
   const executeSearch = (query: string) => {
     if (query.trim() !== "") {

@@ -6,9 +6,14 @@ import Footer from "../components/Footer"
 import WikiCard from "../components/WikiCard"
 import { Input } from "@/components/ui/input"
 import { Search, Loader2 } from "lucide-react"
-import type { Wiki } from "../lib/mock-wikis"
 
-// A simple debounce hook
+interface Wiki {
+  id: string
+  title: string
+  summary: string
+  href: string
+}
+
 const useDebounce = (value: string, delay: number) => {
   const [debouncedValue, setDebouncedValue] = useState(value)
   useEffect(() => {
