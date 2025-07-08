@@ -9,7 +9,7 @@ FOLLOWUP_PROMPT = (
 )
 
 class FollowUpQuestionAgent(ToolCallingAgent):
-    def __init__(self, model_id: str = "Qwen/Qwen2.5-Coder-32B-Instruct"):
+    def __init__(self, model_id: str = "meta-llama/Llama-3.3-70B-Instruct"):
         model = InferenceClientModel(model_id=model_id)
     
         prompt_templates = yaml.safe_load(

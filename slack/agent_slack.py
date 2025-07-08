@@ -18,13 +18,92 @@ from mcp.types import (
     ImageContent,
     EmbeddedResource,
 )
-from smolagents import CodeAgent, InferenceClientModel, tool
+from smolagents import CodeAgent, InferenceClientModel, tool, Tool as SmolTool
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), ""))
 from slack.slack_database_handler import SlackDatabaseHandler
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 logger = logging.getLogger(__name__)
+
+
+class SlackQueryDatabaseTool(SmolTool):
+    """
+    Query ChromaDB for Slack content matching a natural language query.
+
+    This tool performs a semantic search over a Slack database,
+    returning metadata-rich results like message text, message_id, channel name, user name, and timestamp.
+
+    Args:
+        query_text (str): Natural language search query.
+
+    Returns:
+        Dict[str, List]: A dictionary with:
+            - text: List of message texts
+            - ids: List of message IDs
+            - channel_name: List of channel names
+            - user_name: List of user names
+            - timestamp: List of timestamps
+            - data_type: List of data types
+            - message_ids: List of message IDs
+    """
+
+    name = "slack_query_database"
+    description = "Search ChromaDB for transcript segments using natural language queries and optional metadata filters."
+    inputs = {
+        "query_text": {
+            "type": "string",
+            "description": "Natural language text to search for."
+        },
+    }
+    output_type = "object"
+
+    def __init__(self, collection_name: str, database_path: str):
+        super().__init__()
+        self.collection_name = collection_name
+        self.database_path = database_path
+        self.slack_database = SlackDatabaseHandler(
+            database_path=self.database_path,
+            collection_name=self.collection_name,
+        )
+
+    def forward(
+        self,
+        query_text: str,
+    ) -> Dict[str, List]:
+        # Handle empty queries
+        if not query_text or query_text.strip() == "":
+            return {
+                "text": [],
+                "ids": [],
+                "channel_name": [],
+                "user_name": [],
+                "timestamp": [],
+                "data_type": [],
+                "message_ids": [],
+            }
+
+        # Query the database.
+        search_results = self.slack_database.search_messages(
+            query_text,
+            n_results=3,
+        )['results']
+
+        # Extract the results.
+        texts = [msg.get("text", "") for msg in search_results]
+        message_ids = [msg.get("message_id", "") for msg in search_results]
+        channel_names = [msg.get("channel_name", "") for msg in search_results]
+        usernames = [msg.get("username", "") for msg in search_results]
+        timestamps = [msg.get("timestamp", "") for msg in search_results]
+
+        return {
+            "text": texts,
+            "ids": message_ids,
+            "channel_name": channel_names,
+            "user_name": usernames,
+            "timestamp": timestamps,
+            "data_type": ["slack_message"] * len(texts),
+            "message_ids": message_ids,
+        }
 
 class SlackMCPTools:
     """MCP tools for Slack database operations."""

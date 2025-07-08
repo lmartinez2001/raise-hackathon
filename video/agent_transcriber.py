@@ -17,16 +17,17 @@ class ChromaQueryDatabaseTool(Tool):
 
     Returns:
         Dict[str, List]: A dictionary with:
-            - segment_texts: List of transcript texts
-            - video_ids: List of video IDs
+            - texts: List of transcript texts
+            - ids: List of video IDs
             - segment_idx: List of segment indices
             - segment_ids: List of segment unique IDs
             - timestamp_start: List of segment start times
             - timestamp_end: List of segment end times
             - file_creation_date: List of file creation dates
+            - data_type: List of data types
     """
 
-    name = "chroma_query_database"
+    name = "video_transcription_query_database"
     description = "Search ChromaDB for transcript segments using natural language queries and optional metadata filters."
     inputs = {
         "query_text": {
@@ -68,13 +69,14 @@ class ChromaQueryDatabaseTool(Tool):
         segment_idx = [metadata["segment_index"] for metadata in metadatas]
 
         return {
-            "segment_texts": segment_texts,
-            "video_ids": video_ids,
+            "texts": segment_texts,
+            "ids": video_ids,
             "segment_idx": segment_idx,
             "segment_ids": segment_ids,
             "timestamp_start": timestamp_start,
             "timestamp_end": timestamp_end,
             "file_creation_date": file_creation_date,
+            "data_type": ["segment"] * len(segment_texts),
         }
 
 
@@ -169,7 +171,7 @@ def parse_arguments():
     parser.add_argument(
         "--model-id", "-m",
         type=str,
-        default="Qwen/Qwen2.5-Coder-32B-Instruct",
+        default="meta-llama/Llama-3.3-70B-Instruct",
         help="Model ID"
     )
 

@@ -1,12 +1,12 @@
 from smolagents import InferenceClientModel
-from agent.agents.coordinator_agent import CoordinatorAgent
+from agents.coordinator_agent import CoordinatorAgent
 
 def chat_loop():
     print("🤖 Transcript QA Assistant (CLI) — type 'exit' to quit")
     
     # Initialize the agent once at the beginning
     model = InferenceClientModel()
-    agent = CoordinatorAgent(collection_name="database_oliver", database_path="output/database/test_db_oliver")
+    agent = CoordinatorAgent(video_collection_name="database_oliver", video_database_path="output/database/test_db_oliver", slack_collection_name="slack_data", slack_database_path="output/database/slack")
     
     while True:
         user_input = input("\nYou: ")

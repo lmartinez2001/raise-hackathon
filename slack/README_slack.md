@@ -388,7 +388,7 @@ python slack/agent_slack.py --database_path output/database/slack --collection_n
 
 The agent uses the `smolagents` framework with the following configuration:
 
-- **Model**: Qwen/Qwen2.5-Coder-32B-Instruct (via InferenceClientModel)
+- **Model**: meta-llama/Llama-3.3-70B-Instruct (via InferenceClientModel)
 - **Max Steps**: 5 (configurable via `--max-steps`)
 - **Tools**: All Slack database tools with proper data format handling
 - **Error Handling**: Graceful fallbacks for missing data or tool failures
