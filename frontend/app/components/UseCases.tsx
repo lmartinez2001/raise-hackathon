@@ -1,7 +1,11 @@
-import { Users, ClipboardCheck, FlaskConical, Headset } from "lucide-react"
-import Link from "next/link"
+import { Users, ClipboardCheck, FlaskConical, Share2 } from "lucide-react"
 
 const useCases = [
+  {
+    title: "Enable Info Sharing Across the Org",
+    description: "Improving efficiency of the whole org by reducing time spent digging for info.",
+    icon: Share2,
+  },
   {
     title: "Faster Onboarding",
     description:
@@ -19,12 +23,6 @@ const useCases = [
       "Engineers can instantly find technical discussions, architectural decisions, and shared research papers.",
     icon: FlaskConical,
   },
-  {
-    title: "Sales & Support Enablement",
-    description:
-      "Equip client-facing teams with quick access to product details, competitive info, and customer history.",
-    icon: Headset,
-  },
 ]
 
 export default function UseCases() {
@@ -39,10 +37,7 @@ export default function UseCases() {
             <div key={index} className="flex flex-col items-center text-center p-6 bg-white rounded-lg shadow-md">
               <useCase.icon className="h-12 w-12 mb-4 text-purple-600" />
               <h3 className="text-xl font-bold mb-2">{useCase.title}</h3>
-              <p className="text-gray-600 mb-4">{useCase.description}</p>
-              <Link href="#" className="text-purple-600 hover:underline font-medium">
-                Learn more
-              </Link>
+              <p className="text-gray-600">{useCase.description}</p>
             </div>
           ))}
         </div>

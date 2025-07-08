@@ -92,8 +92,8 @@ def auth_callback(
     token_data["timestamp"] = time.time()
     session_token = credential_handler.create_session_token(token_data)
 
-    # Set session cookie and redirect
-    response = RedirectResponse("/")
+    # Set session cookie and redirect to frontend dashboard
+    response = RedirectResponse("http://localhost:3000/dashboard")
     response.delete_cookie("flow_state")
     response.set_cookie(
         "session_token",
@@ -115,7 +115,7 @@ def logout(
     Log out user by revoking token and clearing session.
     """
     creds = credential_handler.get_credentials(request)
-    response = RedirectResponse(url="/")
+    response = RedirectResponse(url="http://localhost:3000/")
     response.delete_cookie("session_token")
 
     # Revoke token at Google if valid

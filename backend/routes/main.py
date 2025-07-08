@@ -62,3 +62,29 @@ def health_check():
     Health check endpoint for monitoring and load balancers.
     """
     return {"status": "healthy", "service": "contexta-backend"}
+
+
+@router.get("/api/user")
+def get_user_info(
+    credential_handler: CredentialHandler = Depends(get_credential_handler),
+    creds=Depends(get_credentials_optional),
+):
+    """
+    Get user information in JSON format.
+
+    Returns basic user info if authenticated, otherwise returns empty data.
+    """
+    if creds is None:
+        return {"is_connected": False}
+
+    try:
+        user_info = credential_handler.fetch_user_info(creds)
+        return {
+            "is_connected": True,
+            "given_name": user_info.get("given_name", ""),
+            "email": user_info.get("email", ""),
+            "picture": user_info.get("picture", ""),
+        }
+    except Exception as e:
+        print(f"Error fetching user info: {e}")
+        return {"is_connected": False}

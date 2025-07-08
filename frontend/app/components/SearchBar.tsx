@@ -1,26 +1,20 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
-import { Search } from "lucide-react"
+import { Search, Sparkles } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
 interface SearchBarProps {
-  onSearch: (query: string) => void
+  query: string
+  onQueryChange: (query: string) => void
+  onSearch: () => void
 }
 
-export default function SearchBar({ onSearch }: SearchBarProps) {
-  const [query, setQuery] = useState("What were the concerns around data privacy in our Q2 planning meetings?")
-
-  const handleSearch = () => {
-    onSearch(query)
-  }
-
+export default function SearchBar({ query, onQueryChange, onSearch }: SearchBarProps) {
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
-      handleSearch()
+      onSearch()
     }
   }
 
@@ -30,12 +24,16 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
       <Input
         type="text"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => onQueryChange(e.target.value)}
         onKeyDown={handleKeyPress}
-        placeholder="Ask a question about your meetings, docs, and chats..."
-        className="w-full pl-11 pr-24 h-14 rounded-lg shadow-md text-base"
+        placeholder=""
+        className="w-full pl-11 pr-32 h-14 rounded-lg shadow-md text-base"
       />
-      <Button onClick={handleSearch} className="absolute right-2.5 top-1/2 -translate-y-1/2 h-10 px-5">
+      <Button
+        onClick={onSearch}
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 h-10 px-5 flex items-center gap-2"
+      >
+        <Sparkles className="h-4 w-4" />
         Search
       </Button>
     </div>

@@ -1,4 +1,4 @@
-import { MeetingCard, SlackCard, DocumentCard } from "./SourceCards"
+import { MeetingCard, SlackCard, DocumentCard, WikiCard } from "./SourceCards"
 import type { Source } from "../lib/mock-data"
 
 interface SourceStreamProps {
@@ -16,6 +16,8 @@ export default function SourceStream({ sources }: SourceStreamProps) {
             return <SlackCard key={source.id} {...source} />
           case "document":
             return <DocumentCard key={source.id} {...source} />
+          case "wiki":
+            return <WikiCard key={source.id} {...source} />
           default:
             return null
         }

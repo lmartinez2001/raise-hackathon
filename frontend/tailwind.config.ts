@@ -1,7 +1,5 @@
 import type { Config } from "tailwindcss"
 
-// all in fixtures is set to tailwind v3 as interims solutions
-
 const config: Config = {
   darkMode: ["class"],
   content: [
@@ -104,15 +102,24 @@ const config: Config = {
             transform: "translate(0px, 0px) scale(1)",
           },
         },
+        orbit: {
+          "0%": {
+            transform: "rotate(0deg) translateX(60px) rotate(0deg)",
+          },
+          "100%": {
+            transform: "rotate(360deg) translateX(60px) rotate(-360deg)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.5s ease-out forwards",
         blob: "blob 7s infinite",
+        orbit: "orbit 6s linear infinite",
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 }
 export default config

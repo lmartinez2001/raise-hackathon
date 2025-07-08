@@ -1,20 +1,20 @@
-import { Sparkles, BrainCircuit, MessageSquare, Files } from "lucide-react"
+import { Sparkles, BrainCircuit, FolderKanban, Files } from "lucide-react"
 
 const features = [
   {
-    title: "Unified Search",
-    description: "One search bar to find answers across all your meetings, documents, and chats.",
+    title: "Cross-Source Unified Search",
+    description: "One click to find answers across all your meetings, docs, and chats. No more context-switching.",
     icon: Sparkles,
   },
   {
     title: "Multi-Meeting Intelligence",
-    description: "Synthesize discussions and decisions that span across multiple related meetings.",
+    description: "Meetings are fragmented by nature. Contexta aggregates discussions scattered across several syncs",
     icon: BrainCircuit,
   },
   {
-    title: "Slack & Docs Integration",
-    description: "Connect conversations and shared files from Slack and Google Drive to your search.",
-    icon: MessageSquare,
+    title: "No Manual Organization",
+    description: "Say goodbye to the burden of never sorting post-meeting resources and copy & pasting from slack.",
+    icon: FolderKanban,
   },
   {
     title: "Traceable Sources",

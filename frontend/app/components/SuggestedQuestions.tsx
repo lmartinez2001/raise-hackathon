@@ -1,18 +1,23 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 
-export default function SuggestedQuestions() {
-  const questions = [
-    "What actions were assigned to me?",
-    "Was there any disagreement?",
-    "Any related updates shared after the meeting?",
-  ]
+interface SuggestedQuestionsProps {
+  questions: string[]
+  onQuestionClick: (question: string) => void
+}
+
+export default function SuggestedQuestions({ questions, onQuestionClick }: SuggestedQuestionsProps) {
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className="flex flex-wrap gap-2">
       {questions.map((q, i) => (
         <Button
           key={i}
           variant="outline"
+          size="sm"
           className="rounded-full bg-white shadow-sm hover:bg-gray-100 hover:border-gray-400 transition-all"
+          onClick={() => onQuestionClick(q)}
+          data-suggested-question="true"
         >
           {q}
         </Button>

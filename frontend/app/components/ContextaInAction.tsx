@@ -7,8 +7,8 @@ export default function ContextaInAction() {
         <div className="text-center">
           <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">See Contexta in Action</h2>
           <p className="mx-auto max-w-[700px] text-gray-600 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-300 mt-4">
-            Watch how Contexta transforms a simple question into a comprehensive, actionable summary by pulling insights
-            from meetings, docs, and chats in real-time.
+            Watch how Contexta easily unlocks info for your team by pulling a comprehensive summary from multiple
+            sources in real-time.
           </p>
         </div>
         <div className="relative mt-12">
