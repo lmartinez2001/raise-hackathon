@@ -1,7 +1,7 @@
 from multiprocessing import cpu_count
 
 # Socket path
-bind = "unix:/home/ubuntu/hackathon/backend/gunicorn.sock"
+bind = "unix:/var/run/raise/backend/gunicorn.sock"
 
 # Worker options
 workers = cpu_count() + 1
@@ -9,11 +9,11 @@ worker_class = "uvicorn.workers.UvicornWorker"
 
 # Logging options
 loglevel = "info"
-accesslog = "/home/ubuntu/hackathon/backend/access.log"
-errorlog = "/home/ubuntu/hackathon/backend/error.log"
+accesslog = "/home/louis/raise/backend/access.log"
+errorlog = "/home/louis/raise/backend/error.log"
 
 # Security
-user = "ubuntu"
+user = "louis"
 group = "www-data"
 
 # Performance

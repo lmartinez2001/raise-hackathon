@@ -36,7 +36,11 @@ allowed_origins = [
 # Add production domain if specified
 if settings.frontend_url:
     allowed_origins.extend(
-        [settings.frontend_url, settings.frontend_url.replace("http://", "https://")]
+        [
+            settings.frontend_url,
+            settings.frontend_url.replace("http://", "https://"),
+            settings.frontend_url.replace("https://", "http://"),
+        ]
     )
 
 app.add_middleware(

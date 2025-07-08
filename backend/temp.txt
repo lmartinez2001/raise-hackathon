@@ -1,9 +1,0 @@
-  async function handleGoogleLogin() {
-    try {
-      // Instead of fetch, directly redirect to the backend login endpoint
-      window.location.href = "/api/auth/login"
-    } catch (err) {
-      console.error(err)
-      alert("Login failed; check console for details.")
-    }
-  }

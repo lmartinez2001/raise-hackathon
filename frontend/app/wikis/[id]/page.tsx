@@ -7,7 +7,7 @@ import { ArrowLeft } from "lucide-react"
 
 async function getWiki(id: string) {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:8000'}/api/wikis/${id}`, {
+    const response = await fetch(`${process.env.BACKEND_URL}/api/wikis/${id}`, {
       cache: 'no-store'
     })
 
