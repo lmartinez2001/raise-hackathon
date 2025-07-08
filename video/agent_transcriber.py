@@ -2,6 +2,7 @@ import argparse
 from typing import Optional, Dict, Any, List, Tuple
 from smolagents import CodeAgent, InferenceClientModel, Tool
 
+from database import ChromaDB
 from video.transcribe_and_store import TranscriptionChromaDB
 
 class ChromaQueryDatabaseTool(Tool):
@@ -164,7 +165,14 @@ def parse_arguments():
         default=5,
         help="Maximum number of agent steps (default: 5)"
     )
-    
+
+    parser.add_argument(
+        "--model-id", "-m",
+        type=str,
+        default="Qwen/Qwen2.5-Coder-32B-Instruct",
+        help="Model ID"
+    )
+
     return parser.parse_args()
 
 
@@ -181,7 +189,7 @@ if __name__ == "__main__":
     max_steps = args.max_steps
 
     # Initialize model and agent
-    model = InferenceClientModel()
+    model = InferenceClientModel(model_id=args.model_id)
     agent = CodeAgent(
         model=model,
         name="video_agent", 

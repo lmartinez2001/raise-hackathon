@@ -415,7 +415,7 @@ if __name__ == "__main__":
     max_steps = args.max_steps
 
     # Initialize model and agent
-    model = InferenceClientModel()
+    model = InferenceClientModel(model_id="meta-llama/Llama-3.1-8B-Instruct")
     agent = CodeAgent(
         model=model,
         name="slack_agent", 

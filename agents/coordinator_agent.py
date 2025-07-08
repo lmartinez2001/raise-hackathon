@@ -2,10 +2,10 @@ import yaml
 import importlib
 from typing import Any, List, Dict
 from smolagents import ToolCallingAgent, InferenceClientModel, FinalAnswerTool
-from agent.agents.answer_synthesizer_agent import AnswerSynthesizerAgent
-from agent.agents.document_retrival_agent import DocumentRetrievalAgent
-from agent.agents.followup_agent import FollowUpQuestionAgent
-from agent.agents.segement_summarizer import SummarizerAgent
+from .answer_synthesizer_agent import AnswerSynthesizerAgent
+from .document_retrival_agent import DocumentRetrievalAgent
+from .followup_agent import FollowUpQuestionAgent
+from .segement_summarizer import SummarizerAgent
 
 
 COORDINATOR_PROMPT = (
@@ -19,8 +19,8 @@ COORDINATOR_PROMPT = (
 )
 
 class CoordinatorAgent(ToolCallingAgent):
-    def __init__(self, collection_name:str, database_path:str):
-        model = InferenceClientModel()
+    def __init__(self, collection_name:str, database_path: str, model_id: str = "Qwen/Qwen2.5-Coder-32B-Instruct"):
+        model = InferenceClientModel(model_id=model_id)
         self.final_formatter = OurFinalAnswerTool()
         
         prompt_templates = yaml.safe_load(
@@ -30,7 +30,7 @@ class CoordinatorAgent(ToolCallingAgent):
     
         super().__init__(
             tools=[self.final_formatter],
-            managed_agents=[DocumentRetrievalAgent(collection_name, database_path), SummarizerAgent(), AnswerSynthesizerAgent(), FollowUpQuestionAgent()],
+            managed_agents=[DocumentRetrievalAgent(collection_name, database_path, model_id=model_id), SummarizerAgent(model_id=model_id), AnswerSynthesizerAgent(model_id=model_id), FollowUpQuestionAgent(model_id=model_id)],
             model=model,
             name="coordinator_agent",
             description="Coordinates all agents to answer a user query and format the final output.",

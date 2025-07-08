@@ -13,8 +13,8 @@ class SummarizerAgent(ToolCallingAgent):
     
     Both the segment (with all its context and metadata) and question should be provided.
     """
-    def __init__(self):
-        model = InferenceClientModel()
+    def __init__(self, model_id: str = "Qwen/Qwen2.5-Coder-32B-Instruct"):
+        model = InferenceClientModel(model_id=model_id)
         prompt_templates = yaml.safe_load(
             importlib.resources.files("smolagents.prompts").joinpath("toolcalling_agent.yaml").read_text()
         )

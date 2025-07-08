@@ -22,8 +22,8 @@ class DocumentRetrievalAgent(ToolCallingAgent):
     3. Returns all relevant documents via the output tool.
     """
 
-    def __init__(self, collection_name:str, database_path:str):
-        model = InferenceClientModel()
+    def __init__(self, collection_name:str, database_path:str, model_id: str = "Qwen/Qwen2.5-Coder-32B-Instruct"):
+        model = InferenceClientModel(model_id=model_id)
         self.chroma_tool = ChromaQueryDatabaseTool(collection_name=collection_name, database_path=database_path)
         self.formatter = DocumentRetrievalFinalAnswerTool()
         prompt_templates = yaml.safe_load(
