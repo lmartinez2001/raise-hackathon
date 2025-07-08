@@ -1,5 +1,7 @@
 from smolagents import InferenceClientModel
 
+from agents.coordinator_agent import CoordinatorAgent
+
 # from agent.agents.coordinator_agent import CoordinatorAgent
 
 
@@ -7,7 +9,6 @@ def chat_loop():
     print("🤖 Transcript QA Assistant (CLI) — type 'exit' to quit")
 
     # Initialize the agent once at the beginning
-    model = InferenceClientModel()
     agent = CoordinatorAgent(
         collection_name="database_oliver",
         database_path="output/database/test_db_oliver",

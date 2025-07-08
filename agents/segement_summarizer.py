@@ -3,8 +3,7 @@ from smolagents import ToolCallingAgent, InferenceClientModel
 import yaml
 
 SUMMARIZER_PROMPT = (
-            f"Given a question and transcript segment, summarize the transcript segment:\n\n"
-            "Summary:"
+            f"Given a question and a series of transcript segments, return summaries of EACH transcript segment individually:\n\n"
         )
 
 class SummarizerAgent(ToolCallingAgent):
@@ -18,7 +17,7 @@ class SummarizerAgent(ToolCallingAgent):
         prompt_templates = yaml.safe_load(
             importlib.resources.files("smolagents.prompts").joinpath("toolcalling_agent.yaml").read_text()
         )
-        prompt_templates["system_prompt"] += SUMMARIZER_PROMPT
+        prompt_templates["managed_agent"]["task"] = SUMMARIZER_PROMPT
         super().__init__(
             tools=[],
             model=model,

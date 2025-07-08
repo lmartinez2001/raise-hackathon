@@ -8,7 +8,7 @@ RETRIEVAL_PROMPT = (
     f"You are an intelligent agent tasked with retrieving relevant transcript segments "
     f"from a vector database. Based on the a user query:\n\n"
     f"You should:\n"
-    f"1. Search the ChromaDB using this query or related terms.\n"
+    f"1. Search the ChromaDB using this query or related terms, once.\n"
     f"2. Decide which (if any) of the retrieved documents are relevant.\n"
     f"3. Return only those relevant documents in structured form.\n\n"
     f"Begin by issuing the appropriate tool calls to retrieve and process results."

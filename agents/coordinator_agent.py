@@ -2,16 +2,16 @@ import yaml
 import importlib
 from typing import Any, List, Dict
 from smolagents import ToolCallingAgent, InferenceClientModel, FinalAnswerTool
-from agent.agents.answer_synthesizer_agent import AnswerSynthesizerAgent
-from agent.agents.document_retrival_agent import DocumentRetrievalAgent
-from agent.agents.followup_agent import FollowUpQuestionAgent
-from agent.agents.segement_summarizer import SummarizerAgent
+from agents.answer_synthesizer_agent import AnswerSynthesizerAgent
+from agents.document_retrival_agent import DocumentRetrievalAgent
+from agents.followup_agent import FollowUpQuestionAgent
+from agents.segement_summarizer import SummarizerAgent
 
 
 COORDINATOR_PROMPT = (
     "You are an intelligent agent that coordinates other agents to answer a user question. "
     "Your task:\n"
-    "1. Use the DocumentRetrievalAgent to gather relevant transcript segments (potentially multiple times).)\n"
+    "1. Use the DocumentRetrievalAgent to gather relevant transcript segments (Note: ONLY CALL THIS TOOL (DocumentRetrievalAgent) *ONCE*, do not call it multiple times).)\n"
     "2. Use the SummarizerAgent to summarize each relevant transcript segment.\n"
     "3. Use the AnswerSynthesizerAgent to generate a detailed answer from the summaries.\n"
     "4. Use the FollowUpQuestionAgent to suggest follow-up questions.\n"
@@ -58,11 +58,13 @@ class OurFinalAnswerTool(FinalAnswerTool):
                 "video_segment_file": "data/video_short_2_segment_0062.mp4",
                 "timestamp_range": "[02:33 - 02:35]",
                 "text": "In order to make the connection."
+                "summary": "The speaker spoke about the connection"
             },
             {
                 "video_segment_file": "data/video_short_2_segment_0067.mp4",
                 "timestamp_range": "[02:46 - 02:49]",
                 "text": "That we now have initialized a session."
+                "summary": "The speaker spoke about a session"
             }
         ]
         followups = ["What else was discussed in the meeting?", "What were the conclusions?"]
@@ -76,7 +78,7 @@ class OurFinalAnswerTool(FinalAnswerTool):
         "answer": {"type": "string", "description": "Generated explanation text"},
         "segments": {
             "type": "array",
-            "description": "List of segment dicts including video_segment_file, timestamp_range, text"
+            "description": "List of segment dicts including fields such as video_segment_file, timestamp_range, text, summary"
         },
         "followups": {"type": "array", "description": "List of follow up questions based on the query"}
     }
@@ -88,7 +90,8 @@ class OurFinalAnswerTool(FinalAnswerTool):
             file = seg["video_segment_file"]
             time = seg.get("timestamp_range", "")
             text = seg.get("text", "")
-            note = f'- 📹 `{file}` {time}\n    • "{text}"'
+            summary = seg.get("summary", "")
+            note = f'- 📹 `{file}` {time}\n    • "{text}\n    • "{summary}"'
             output.append(note)
 
         output.append("\n**Suggested Follow-up Questions:**")

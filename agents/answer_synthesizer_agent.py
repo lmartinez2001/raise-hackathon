@@ -16,7 +16,7 @@ class AnswerSynthesizerAgent(ToolCallingAgent):
         prompt_templates = yaml.safe_load(
             importlib.resources.files("smolagents.prompts").joinpath("toolcalling_agent.yaml").read_text()
         )
-        prompt_templates["system_prompt"] += ANSWER_SYNTHESIZER_PROMPT
+        prompt_templates["managed_agent"]["task"] = ANSWER_SYNTHESIZER_PROMPT
 
         super().__init__(
             tools=[],
