@@ -28,9 +28,20 @@ app = FastAPI(
 )
 
 # Configure CORS middleware
+allowed_origins = [
+    "http://localhost:3000",
+    "https://localhost:3000",
+]
+
+# Add production domain if specified
+if settings.frontend_url:
+    allowed_origins.extend(
+        [settings.frontend_url, settings.frontend_url.replace("http://", "https://")]
+    )
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

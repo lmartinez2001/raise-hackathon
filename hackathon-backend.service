@@ -1,0 +1,16 @@
+[Unit]
+Description=Gunicorn Daemon for Hackathon Backend
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/hackathon/backend
+Environment="PATH=/home/ubuntu/hackathon/backend/venv/bin"
+ExecStart=/home/ubuntu/hackathon/backend/venv/bin/gunicorn -c /home/ubuntu/hackathon/backend/gunicorn_conf.py server:app
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

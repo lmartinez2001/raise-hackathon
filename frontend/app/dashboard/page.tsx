@@ -31,12 +31,12 @@ export default function DashboardPage() {
           credentials: 'include'
         })
         const authData = await response.json()
-        
+
         if (!authData.authenticated) {
           router.push('/')
           return
         }
-        
+
         if (authData.user?.given_name) {
           setUserName(authData.user.given_name)
         }

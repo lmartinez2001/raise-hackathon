@@ -4,7 +4,8 @@ export async function GET(request: Request) {
         const cookieHeader = request.headers.get('cookie') || '';
 
         // Call the backend API to get user info
-        const response = await fetch('http://localhost:8000/api/user', {
+        const backendUrl = process.env.BACKEND_URL || "http://localhost:8000"
+        const response = await fetch(`${backendUrl}/api/user`, {
             headers: {
                 'Content-Type': 'application/json',
                 'Cookie': cookieHeader,

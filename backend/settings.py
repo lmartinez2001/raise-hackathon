@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     secret_key: str
     target_drive_name: str
     hf_token: str
+    frontend_url: str = ""
 
     class Config:
         env_file = ".env"
