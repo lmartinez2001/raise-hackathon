@@ -447,3 +447,8 @@ store/
 # Backup files
 *.bak
 *.backup
+
+# Random
+nginx-config
+deploy.sh
+*.service
