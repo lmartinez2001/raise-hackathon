@@ -1,6 +1,5 @@
 """
 FastAPI application with modular router structure.
-Implements best practices for dependency injection and route organization.
 """
 
 import os

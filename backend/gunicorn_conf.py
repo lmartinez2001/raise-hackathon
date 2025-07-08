@@ -8,16 +8,6 @@ workers = cpu_count() + 1
 worker_class = "uvicorn.workers.UvicornWorker"
 
 # Logging options
-loglevel = "info"
+loglevel = "debug"
 accesslog = "/home/louis/raise/backend/access.log"
 errorlog = "/home/louis/raise/backend/error.log"
-
-# Security
-user = "louis"
-group = "www-data"
-
-# Performance
-keepalive = 2
-max_requests = 1000
-max_requests_jitter = 100
-timeout = 30

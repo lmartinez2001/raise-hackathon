@@ -64,7 +64,7 @@ def health_check():
     return {"status": "healthy", "service": "contexta-backend"}
 
 
-@router.get("/api/user")
+@router.get("/user")
 def get_user_info(
     credential_handler: CredentialHandler = Depends(get_credential_handler),
     creds=Depends(get_credentials_optional),
@@ -96,7 +96,7 @@ from typing import List, Dict, Any
 from datetime import datetime
 
 
-@router.get("/api/wikis")
+@router.get("/wikis")
 def get_wikis(q: str = ""):
     """
     Get wikis from markdown files in docs directory.
@@ -162,7 +162,7 @@ def get_wikis(q: str = ""):
     return wikis
 
 
-@router.get("/api/wikis/{wiki_id}")
+@router.get("/wikis/{wiki_id}")
 def get_wiki(wiki_id: str):
     """
     Get a specific wiki by ID.
