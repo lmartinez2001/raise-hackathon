@@ -3,7 +3,10 @@ import ast
 import time
 import requests
 import urllib.parse
+import mimetypes
 import drive.service as drive
+from io import BytesIO
+from googleapiclient.http import MediaIoBaseDownload
 
 from settings import Settings
 from collections import defaultdict
@@ -136,22 +139,41 @@ def logout(request: Request):
 # ==> Functionalities
 @app.get("/drive/files")
 def list_files(request: Request):
-    creds = credential_handler.get_credentials(request)
-    if not creds:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    creds = credential_handler.validate_credentials_or_redirect(request)
+    if isinstance(creds, JSONResponse):
+        return creds
 
     service = drive.get_drive_service(creds)
     try:
-        results = service.files().list().execute()
-        items = results.get("files", [])
-        return items
+        contexta_drive_id = drive.get_contexta_drive_id(
+            service, settings.target_drive_name
+        )
+        if contexta_drive_id is None:
+            raise HTTPException(status_code=404, detail="Contexta drive not found")
+
+        results = (
+            service.files()
+            .list(
+                corpora="drive",
+                driveId=contexta_drive_id,
+                includeItemsFromAllDrives=True,
+                supportsAllDrives=True,
+                fields="files(id, name, mimeType)",
+            )
+            .execute()
+        )
+
+        return results.get("files", [])
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching files: {str(e)}")
 
 
 @app.get("/drive/tree")
 def list_files(request: Request):
-    creds = credential_handler.get_credentials(request)
+    creds = credential_handler.validate_credentials_or_redirect(request)
+    if isinstance(creds, JSONResponse):
+        return creds
+
     service = drive.get_drive_service(creds)
 
     contexta_drive_id = drive.get_contexta_drive_id(service, settings.target_drive_name)
@@ -183,3 +205,119 @@ def list_files(request: Request):
 
     tree = {contexta_drive_id: build_tree(contexta_drive_id)}
     return tree
+
+
+@app.get("/drive/download/{file_id}")
+def download_file(file_id: str, request: Request):
+    creds = credential_handler.validate_credentials_or_redirect(request)
+    if isinstance(creds, JSONResponse):
+        return creds
+
+    service = drive.get_drive_service(creds)
+
+    file_metadata = (
+        service.files().get(fileId=file_id, supportsAllDrives=True).execute()
+    )
+    file_name = file_metadata["name"]
+
+    request_obj = service.files().get_media(fileId=file_id, supportsAllDrives=True)
+    fh = BytesIO()
+    downloader = MediaIoBaseDownload(fh, request_obj)
+
+    done = False
+    while not done:
+        status, done = downloader.next_chunk()
+        print(f"Download {int(status.progress() * 100)}%.")
+
+    fh.seek(0)
+
+    os.makedirs("data", exist_ok=True)
+    file_path = os.path.join("data", file_name)
+
+    with open(file_path, "wb") as f:
+        f.write(fh.read())
+        f.close()
+
+    return {"message": "File downloaded successfully", "file_path": file_path}
+
+
+@app.get("/drive/download-videos")
+def download_videos(request: Request):
+    creds = credential_handler.validate_credentials_or_redirect(request)
+    if isinstance(creds, JSONResponse):
+        return creds
+
+    service = drive.get_drive_service(creds)
+
+    try:
+        contexta_drive_id = drive.get_contexta_drive_id(
+            service, settings.target_drive_name
+        )
+        if contexta_drive_id is None:
+            raise HTTPException(status_code=404, detail="Contexta drive not found")
+
+        results = (
+            service.files()
+            .list(
+                corpora="drive",
+                driveId=contexta_drive_id,
+                includeItemsFromAllDrives=True,
+                supportsAllDrives=True,
+                fields="files(id, name, mimeType)",
+            )
+            .execute()
+        )
+
+        files = results.get("files", [])
+        video_files = [f for f in files if f.get("mimeType", "").startswith("video/")]
+
+        downloaded_videos = []
+        os.makedirs("data/videos", exist_ok=True)
+
+        for video in video_files:
+            file_id = video["id"]
+            file_name = video["name"]
+            mime_type = video["mimeType"]
+
+            extension = mimetypes.guess_extension(mime_type)
+            if not extension:
+                extension = ".mp4"
+
+            if not file_name.endswith(extension):
+                file_name = os.path.splitext(file_name)[0] + extension
+
+            request_obj = service.files().get_media(
+                fileId=file_id, supportsAllDrives=True
+            )
+            fh = BytesIO()
+            downloader = MediaIoBaseDownload(fh, request_obj)
+
+            done = False
+            while not done:
+                status, done = downloader.next_chunk()
+                print(f"Downloading {file_name}: {int(status.progress() * 100)}%.")
+
+            fh.seek(0)
+            file_path = os.path.join("data/videos", file_name)
+
+            with open(file_path, "wb") as f:
+                f.write(fh.read())
+
+            downloaded_videos.append(
+                {
+                    "id": file_id,
+                    "name": file_name,
+                    "path": file_path,
+                    "mime_type": mime_type,
+                }
+            )
+
+        return {
+            "message": f"Downloaded {len(downloaded_videos)} videos",
+            "videos": downloaded_videos,
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error downloading videos: {str(e)}"
+        )

@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     scope: str
     secret_key: str
     target_drive_name: str
+    hf_token: str
 
     class Config:
         env_file = ".env"

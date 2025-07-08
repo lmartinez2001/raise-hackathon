@@ -1,4 +1,5 @@
 import json
+from fastapi.responses import JSONResponse
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
@@ -92,3 +93,16 @@ class CredentialHandler:
         """Create a signed session token"""
         data = json.dumps(token_data).encode()
         return self.signer.sign(data).decode()
+
+    def validate_credentials_or_redirect(self, request: Request):
+        creds = self.get_credentials(request)
+        if not creds or not creds.valid:
+            return JSONResponse(
+                {
+                    "error": "Invalid credentials",
+                    "redirect": "/",
+                    "alert": "Your session has expired. Please log in again.",
+                },
+                status_code=401,
+            )
+        return creds
