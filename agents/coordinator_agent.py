@@ -15,7 +15,7 @@ COORDINATOR_PROMPT = (
     "2. Use the SummarizerAgent to summarize each relevant transcript segment or slack message.\n"
     "3. Use the AnswerSynthesizerAgent to generate a detailed answer from the summaries.\n"
     "4. Use the FollowUpQuestionAgent to suggest follow-up questions.\n"
-    "5. Format everything using OurFinalAnswerTool.\n"
+    "5. Answer the question and in a SEPARATE step use OurFinalAnswerTool to return a structured overview of the database entries relevant to the question.\n"
 )
 
 class CoordinatorAgent(ToolCallingAgent):
@@ -53,7 +53,7 @@ class OurFinalAnswerTool(FinalAnswerTool):
     Args:
         answer (str): The generated explanation text.
         database_content (List[Dict[str, Any]]): A list of dictionaries, each containing information about a document.
-                                         For video segments: 'video_segment_file', 'timestamp_range', 'data_type=segment' and 'text'.
+                                         For video segments: 'id', 'segment_idx', 'timestamp_range', 'data_type=segment' and 'text'.
                                          For Slack messages: 'channel_name', 'username', 'timestamp', 'data_type=slack_message' and 'text'.
         followups (List[str]): a list of followup questions.
 
@@ -64,7 +64,7 @@ class OurFinalAnswerTool(FinalAnswerTool):
         answer = "The primary purpose of the meeting was to discuss the new project timeline."
         database_content = [
             {
-                "video_segment_file": "data/video_short_2_segment_0062.mp4",
+                "id": "data/video_short_2_segment_0062.mp4",
                 "timestamp_range": "[02:33 - 02:35]",
                 "text": "In order to make the connection.",
                 "data_type": "segment"
@@ -88,7 +88,7 @@ class OurFinalAnswerTool(FinalAnswerTool):
         "answer": {"type": "string", "description": "Generated explanation text"},
         "database_content": {
             "type": "array",
-            "description": "List of database entry dicts including video_segment_file, timestamp_range, data_type=segment and text for videos OR channel_name, username, timestamp, data_type=slack_message and text for Slack messages"
+            "description": "List of database entry dicts including id, timestamp_range, data_type=segment and text for videos OR channel_name, username, timestamp, data_type=slack_message and text for Slack messages"
         },
         "followups": {"type": "array", "description": "List of follow up questions based on the query"}
     }
@@ -100,7 +100,7 @@ class OurFinalAnswerTool(FinalAnswerTool):
         for content in database_content:
             # Check if this is a video segment (has video_segment_file)
             if content.get("data_type", "") == "segment":
-                file = content["video_segment_file"]
+                file = content["id"]
                 time = content.get("timestamp_range", "")
                 text = content.get("text", "")
                 note = f'- 📹 `{file}` {time}\n    • "{text}"'

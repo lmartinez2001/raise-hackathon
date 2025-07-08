@@ -636,23 +636,17 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--database", "-d",
+        "--database_path", "-d",
         type=str,
         required=True,
         help="Path to ChromaDB database directory"
     )
 
     parser.add_argument(
-        "--collection", "-c", 
+        "--collection_name", "-c", 
         type=str,
         default="slack_data",
         help="ChromaDB collection name"
-    )
-
-    parser.add_argument(
-        "--import-slack",
-        action="store_true",
-        help="Import data from Slack API"
     )
 
     parser.add_argument(
@@ -677,19 +671,18 @@ if __name__ == "__main__":
 
     # Initialize handler
     handler = SlackDatabaseHandler(
-        database_path=args.database,
-        collection_name=args.collection
+        database_path=args.database_path,
+        collection_name=args.collection_name
     )
 
     # Import from Slack if requested
-    if args.import_slack:
-        if not args.token:
-            parser.error("--token is required when using --import-slack")
-        handler.import_from_slack_api(
-            slack_token=args.token,
-            include_bot_messages=args.include_bot_messages,
-            max_messages_per_channel=args.max_messages_per_channel
-        )
+    if not args.token:
+        parser.error("--token is required when using --import-slack")
+    handler.import_from_slack_api(
+        slack_token=args.token,
+        include_bot_messages=args.include_bot_messages,
+        max_messages_per_channel=args.max_messages_per_channel
+    )
 
     # Show stats if requested  
     stats = handler.get_collection_stats()

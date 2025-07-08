@@ -17,12 +17,11 @@ class ChromaQueryDatabaseTool(Tool):
 
     Returns:
         Dict[str, List]: A dictionary with:
-            - texts: List of transcript texts
-            - ids: List of video IDs
-            - segment_idx: List of segment indices
-            - segment_ids: List of segment unique IDs
-            - timestamp_start: List of segment start times
-            - timestamp_end: List of segment end times
+            - text: List of transcript texts
+            - id: List of video IDs
+            - segment_id: List of segment indices
+            - segment_id: List of segment unique IDs
+            - timestamp_range: List of segment start and end times
             - file_creation_date: List of file creation dates
             - data_type: List of data types
     """
@@ -63,18 +62,16 @@ class ChromaQueryDatabaseTool(Tool):
         segment_texts = documents["documents"][0]
         metadatas = documents["metadatas"][0]
         video_ids = [metadata["video_id"] for metadata in metadatas]
-        timestamp_start = [metadata["start_time"] for metadata in metadatas]
-        timestamp_end = [metadata["end_time"] for metadata in metadatas]
+        timestamp_range = [metadata["timestamp_range"] for metadata in metadatas]
         file_creation_date = [metadata["file_creation_date"] for metadata in metadatas]
-        segment_idx = [metadata["segment_index"] for metadata in metadatas]
+        segment_idx = [metadata["segment_idx"] for metadata in metadatas]
 
         return {
-            "texts": segment_texts,
-            "ids": video_ids,
+            "text": segment_texts,
+            "id": video_ids,
             "segment_idx": segment_idx,
-            "segment_ids": segment_ids,
-            "timestamp_start": timestamp_start,
-            "timestamp_end": timestamp_end,
+            "segment_id": segment_ids,
+            "timestamp_range": timestamp_range,
             "file_creation_date": file_creation_date,
             "data_type": ["segment"] * len(segment_texts),
         }

@@ -3,13 +3,13 @@ from smolagents import ToolCallingAgent, InferenceClientModel
 import yaml
 import sys
 import os
+from typing import List, Dict, Any
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), ""))
 
 from video.agent_transcriber import ChromaQueryDatabaseTool
 from slack.agent_slack import SlackQueryDatabaseTool
 from smolagents import FinalAnswerTool
-from typing import Dict, Any
 
 RETRIEVAL_PROMPT = (
     f"You are an intelligent agent tasked with retrieving relevant video transcriptions or slack data"
@@ -66,8 +66,10 @@ class DocumentRetrievalAgent(ToolCallingAgent):
 
 class DocumentRetrievalFinalAnswerTool(FinalAnswerTool):
     description: str = (
-        "Collects and returns a list of relevant documents. Each document should be a dictionary "
-        "with structured fields such as 'document_id', 'text', 'score', 'id' etc."
+        "Collects and returns a list of database entries. Each document should be a dictionary "
+        "with structured fields."
+        "For video segments: 'id', 'segment_idx', 'timestamp_range', 'data_type=segment' and 'text'."
+        "For Slack messages: 'id','channel_name', 'username', 'timestamp', 'data_type=slack_message' and 'text'."
         "Each document that is returned should be returned in full."
     )
     inputs: Dict[str, Any] = {
@@ -77,6 +79,48 @@ class DocumentRetrievalFinalAnswerTool(FinalAnswerTool):
         }
     }
     output_type: str = "array"
+
+    def forward(self, answer: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Transform the raw tool results into the format expected by the coordinator agent.
+        
+        Args:
+            answer: List of documents from the retrieval tools
+            
+        Returns:
+            List of properly formatted documents
+        """
+        formatted_documents = []
+        
+        for doc in answer:
+            # Check if this is from video transcription tool
+            if doc.get("document_id") == "video_transcription_query_database":
+                # Extract video segment information
+                formatted_doc = {
+                    "id": doc.get("id", ""),
+                    "timestamp_range": doc.get("timestamp_range", ""),
+                    "text": doc.get("text", ""),
+                    "data_type": "segment"
+                }
+                formatted_documents.append(formatted_doc)
+            
+            # Check if this is from slack tool
+            elif doc.get("document_id") == "slack_query_database":
+                # Extract slack message information
+                formatted_doc = {
+                    "channel_name": doc.get("channel_name", ""),
+                    "username": doc.get("username", ""),
+                    "timestamp": doc.get("timestamp", ""),
+                    "text": doc.get("text", ""),
+                    "data_type": "slack_message"
+                }
+                formatted_documents.append(formatted_doc)
+            
+            # Fallback for unknown format
+            else:
+                formatted_documents.append(doc)
+        
+        return formatted_documents
 
 
 def test_document_retrieval_agent():

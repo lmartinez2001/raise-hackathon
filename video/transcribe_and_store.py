@@ -26,12 +26,13 @@ from video.whisper_transcription_tool import WhisperTranscriptionTool
 
 
 class TranscriptionChromaDB(ChromaDB):
-    def __init__(self, database_path: str, collection_name: str):
+    def __init__(self, database_path: str, collection_name: str, query_mode: bool = True, chunk_size: int = 1):
         """Initialize the transcription and ChromaDB integration."""
 
-        super().__init__(database_path=database_path, collection_name=collection_name) 
+        super().__init__(database_path=database_path, collection_name=collection_name, query_mode=query_mode) 
 
         self.transcription_tool = WhisperTranscriptionTool()
+        self.chunk_size = chunk_size
     
     async def transcribe_and_store_video(
         self,
@@ -90,22 +91,50 @@ class TranscriptionChromaDB(ChromaDB):
                 logger.error(f"Error storing video file: {e}")
                 print(f"⚠ Warning: Could not store video file: {e}")
         
-        # Store each segment in ChromaDB
+        # Store segments in chunks, respecting sentence boundaries
         segments = result.get("segments", [])
         stored_segments = []
         
-        for i, segment in enumerate(segments):
-            segment_id = f"{result.get('video_id', 'unknown')}_segment_{i:06d}"
-
-            segment_storage_result = await self.store_segment_in_database(
-                segment=segment,
+        # Process segments in chunks, ensuring each chunk ends with a sentence
+        i = 0
+        segment_idx = 0
+        while i < len(segments):
+            # Start with chunk_size segments
+            chunk_size = self.chunk_size
+            chunk_segments = segments[i:i+chunk_size]
+            
+            # Combine text to check sentence ending
+            combined_text = " ".join([seg.get("text", "").strip() for seg in chunk_segments])
+            sentence_endings = ['.', '!', '?', ':', ';']
+            ends_with_sentence = any(combined_text.rstrip().endswith(ending) for ending in sentence_endings)
+            
+            # If we don't have a sentence ending and there are more segments, try to include more
+            if not ends_with_sentence and i + chunk_size < len(segments):
+                # Try to find a sentence ending by including more segments
+                for extra_segments in range(1, self.chunk_size):  # Try more segments
+                    if i + chunk_size + extra_segments <= len(segments):
+                        extended_chunk = segments[i : i + chunk_size + extra_segments]
+                        extended_text = " ".join([seg.get("text", "").strip() for seg in extended_chunk])
+                        if any(extended_text.rstrip().endswith(ending) for ending in sentence_endings):
+                            chunk_segments = extended_chunk
+                            chunk_size += extra_segments
+                            break
+            
+            segment_id = f"{result.get('video_id', 'unknown')}_segment_{segment_idx:06d}"
+            
+            segment_storage_result = await self.store_segment_chunk_in_database(
+                segments=chunk_segments,
                 segment_id=segment_id,
-                segment_idx=i,
+                segment_idx=segment_idx,
                 base_metadata=base_metadata
             )
             
             stored_segments.append(segment_storage_result)
-            print(f"  Stored segment {i+1}/{len(segments)}: {segment_id}")
+            print(f"  Stored segment {segment_idx+1}: {segment_id} ({len(chunk_segments)} segments)")
+            
+            # Move to next chunk
+            i += len(chunk_segments)
+            segment_idx += 1
         
         print(f"✓ Stored {len(stored_segments)} segments in ChromaDB")
         
@@ -141,6 +170,69 @@ class TranscriptionChromaDB(ChromaDB):
             logger.error(f"Error decoding video from base64: {e}")
             raise
 
+    async def store_segment_chunk_in_database(
+        self,
+        segments: List[Dict[str, Any]],
+        segment_id: str,
+        segment_idx: int,
+        base_metadata: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Store a chunk of segments in the database."""
+        
+        if not segments:
+            return {"segment_id": segment_id, "text": "", "metadata": {}}
+        
+        # Combine text from all segments in the chunk
+        combined_text = " ".join([segment.get("text", "").strip() for segment in segments])
+        
+        # Check if the combined text ends with a proper sentence ending
+        sentence_endings = ['.', '!', '?', ':', ';']
+        ends_with_sentence = any(combined_text.rstrip().endswith(ending) for ending in sentence_endings)
+        
+        # If it doesn't end with a sentence ending, try to include the next segment
+        # This will be handled by the calling function by adjusting chunk boundaries
+        if not ends_with_sentence and combined_text.strip():
+            # Add a period if the text doesn't end with any sentence ending
+            combined_text = combined_text.rstrip() + "."
+        
+        # Get timing information from first and last segment
+        first_segment = segments[0]
+        last_segment = segments[-1]
+        
+        start_time = first_segment.get("start", 0)
+        end_time = last_segment.get("end", 0)
+        
+        # Format timestamps
+        start_formatted = first_segment.get("start_formatted", "")
+        end_formatted = last_segment.get("end_formatted", "")
+        timestamp_range = f"[{start_formatted} - {end_formatted}]"
+        
+        # Prepare segment metadata
+        segment_metadata = {
+            **base_metadata,
+            "segment_idx": segment_idx,
+            "start_time": start_time,
+            "end_time": end_time,
+            "start_formatted": start_formatted,
+            "end_formatted": end_formatted,
+            "timestamp_range": timestamp_range,
+            "data_type": "segment",
+        }
+        
+        # Store in ChromaDB
+        self.collection.add(
+            ids=[segment_id],
+            documents=[combined_text],
+            metadatas=[segment_metadata]
+        )
+        
+        return {
+            "segment_id": segment_id,
+            "text": combined_text,
+            "timestamp": timestamp_range,
+            "metadata": segment_metadata
+        }
+
     async def store_segment_in_database(
         self,
         segment: Dict[str, Any],
@@ -153,7 +245,7 @@ class TranscriptionChromaDB(ChromaDB):
         # Prepare segment metadata
         segment_metadata = {
             **base_metadata,
-            "segment_index": segment_idx,
+            "segment_idx": segment_idx,
             "start_time": segment.get("start", 0),
             "end_time": segment.get("end", 0),
             "start_formatted": segment.get("start_formatted", ""),
@@ -249,7 +341,7 @@ def parse_arguments():
         epilog="""
         Examples:
         python transcribe_and_store.py --video data/video.mp4
-        python transcribe_and_store.py --video data/video.mp4 --collection my_collection --database output/my_db
+        python transcribe_and_store.py --video data/video.mp4 --collection_name my_collection --database_path output/my_db
         python transcribe_and_store.py --video data/video.mp4 --model large --store-video
         """
     )
@@ -262,14 +354,14 @@ def parse_arguments():
     )
     
     parser.add_argument(
-        "--collection", "-c",
+        "--collection_name", "-c",
         type=str,
         required=True,
         help="ChromaDB collection name"
     )
     
     parser.add_argument(
-        "--database", "-d",
+        "--database_path", "-d",
         type=str,
         required=True,
         help="Path to ChromaDB database directory"
@@ -296,6 +388,13 @@ def parse_arguments():
         help="Store the video file in the database (default: False)"
     )
 
+    parser.add_argument(
+        "--chunk_size",
+        type=int,
+        default=1,
+        help="Number of segments to store in each chunk (default: 2)"
+    )
+
     return parser.parse_args()
 
 async def main():
@@ -303,14 +402,14 @@ async def main():
     
     # Parse command line arguments.
     args = parse_arguments()
-    collection_name = args.collection
+    collection_name = args.collection_name
     video_path = args.video
-    database_path = args.database
+    database_path = args.database_path
     
     assert os.path.exists(video_path), f"Video file not found: {video_path}"
     
     # Initialize the transcription and storage system.
-    transcriber = TranscriptionChromaDB(collection_name=collection_name, database_path=database_path)        
+    transcriber = TranscriptionChromaDB(collection_name=collection_name, database_path=database_path, query_mode=False, chunk_size=args.chunk_size)        
     
     # Transcribe and store the video.
     print("=" * 60)
@@ -368,7 +467,7 @@ async def main():
                 search_results["results"]["documents"][0],
                 search_results["results"]["metadatas"][0]
             )):
-                print(f"  Result {i+1}: {doc[:100]}...")
+                print(f"  Result {i+1}: {doc}")
                 print(f"    Video: {metadata.get('video_id', 'unknown')}")
                 print(f"    Timestamp: {metadata.get('timestamp_range', 'N/A')}")
         else:

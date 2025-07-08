@@ -57,7 +57,7 @@ The Slack database handler can be configured in `mcp_config.json`:
 The handler can import data directly from your Slack workspace:
 
 ```bash
-python slack/slack_database_handler.py --slack-token "xoxb-your-token" --database-path "output/database/slack" --collection-name "slack_data"
+python slack/slack_database_handler.py --token "xoxb-your-token" --database_path "output/database/slack" --collection_name "slack_data"
 ```
 
 This will:

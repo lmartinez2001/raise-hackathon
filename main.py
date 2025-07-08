@@ -6,7 +6,7 @@ def chat_loop():
     
     # Initialize the agent once at the beginning
     model = InferenceClientModel()
-    agent = CoordinatorAgent(video_collection_name="database_oliver", video_database_path="output/database/test_db_oliver", slack_collection_name="slack_data", slack_database_path="output/database/slack")
+    agent = CoordinatorAgent(video_collection_name="video_transcriptions", video_database_path="output/database/meetings", slack_collection_name="slack_data", slack_database_path="output/database/slack")
     
     while True:
         user_input = input("\nYou: ")

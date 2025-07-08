@@ -39,12 +39,12 @@ class SlackQueryDatabaseTool(SmolTool):
     Returns:
         Dict[str, List]: A dictionary with:
             - text: List of message texts
-            - ids: List of message IDs
+            - id: List of message IDs
             - channel_name: List of channel names
             - user_name: List of user names
             - timestamp: List of timestamps
             - data_type: List of data types
-            - message_ids: List of message IDs
+            - message_id: List of message IDs
     """
 
     name = "slack_query_database"
@@ -74,12 +74,12 @@ class SlackQueryDatabaseTool(SmolTool):
         if not query_text or query_text.strip() == "":
             return {
                 "text": [],
-                "ids": [],
+                "id": [],
                 "channel_name": [],
                 "user_name": [],
                 "timestamp": [],
                 "data_type": [],
-                "message_ids": [],
+                "message_id": [],
             }
 
         # Query the database.
@@ -97,12 +97,12 @@ class SlackQueryDatabaseTool(SmolTool):
 
         return {
             "text": texts,
-            "ids": message_ids,
+            "id": message_ids,
             "channel_name": channel_names,
             "user_name": usernames,
             "timestamp": timestamps,
             "data_type": ["slack_message"] * len(texts),
-            "message_ids": message_ids,
+            "message_id": message_ids,
         }
 
 class SlackMCPTools:
